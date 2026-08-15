@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Serve Check — Toss Tracker v1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root{
+    --court-green:#1c3b2e;
+    --court-green-dark:#122a20;
+    --chalk:#f4f1e8;
+    --ball:#d4e157;
+    --ball-dim:#8a9a3a;
+    --clay:#c1440e;
+    --line-dim:rgba(244,241,232,0.28);
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  body{
+    background:var(--court-green-dark);
+    background-image:
+      linear-gradient(var(--court-green-dark), var(--court-green-dark)),
+      repeating-linear-gradient(0deg, transparent, transparent 79px, var(--line-dim) 79px, var(--line-dim) 80px);
+    color:var(--chalk);
+    font-family:'Space Grotesk', sans-serif;
+    min-height:100vh;
+    padding:24px 16px 60px;
+  }
+
+  header{
+    max-width:900px;
+    margin:0 auto 28px;
+    border-bottom:1px solid var(--line-dim);
+    padding-bottom:18px;
+  }
+
+  .eyebrow{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ball);
+    margin-bottom:8px;
+  }
+
+  h1{
+    font-size:clamp(28px, 5vw, 40px);
+    font-weight:700;
+    letter-spacing:-0.01em;
+  }
+
+  .sub{
+    color:var(--line-dim);
+    font-size:14px;
+    margin-top:6px;
+    max-width:60ch;
+  }
+
+  main{
+    max-width:900px;
+    margin:0 auto;
+    display:grid;
+    grid-template-columns:1fr;
+    gap:20px;
+  }
+
+  @media(min-width:760px){
+    main{grid-template-columns: 1.3fr 1fr;}
+  }
+
+  .video-wrap{
+    position:relative;
+    background:#000;
+    border-radius:4px;
+    overflow:hidden;
+    aspect-ratio: 4/3;
+    border:1px solid var(--line-dim);
+  }
+
+  video, canvas{
+    position:absolute;
+    top:0; left:0;
+    width:100%; height:100%;
+    transform:scaleX(-1);
+  }
+
+  .status-pill{
+    position:absolute;
+    top:12px; left:12px;
+    z-index:5;
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    background:rgba(18,42,32,0.85);
+    border:1px solid var(--line-dim);
+    padding:6px 10px;
+    border-radius:2px;
+    display:flex;
+    align-items:center;
+    gap:6px;
+  }
+
+  .dot{width:7px; height:7px; border-radius:50%; background:var(--clay);}
+  .dot.live{background:var(--ball); box-shadow:0 0 8px var(--ball);}
+
+  .controls{
+    display:flex;
+    gap:10px;
+    margin-top:14px;
+    flex-wrap:wrap;
+  }
+
+  button{
+    font-family:'Space Grotesk', sans-serif;
+    font-weight:500;
+    font-size:14px;
+    background:transparent;
+    color:var(--chalk);
+    border:1px solid var(--chalk);
+    padding:10px 18px;
+    border-radius:2px;
+    cursor:pointer;
+    transition:all 0.15s ease;
+  }
+
+  button:hover{background:var(--chalk); color:var(--court-green-dark);}
+  button:disabled{opacity:0.3; cursor:not-allowed;}
+
+  button.primary{
+    background:var(--ball);
+    border-color:var(--ball);
+    color:var(--court-green-dark);
+    font-weight:700;
+  }
+  button.primary:hover{background:var(--chalk); border-color:var(--chalk);}
+
+  .panel{
+    border:1px solid var(--line-dim);
+    border-radius:4px;
+    padding:18px;
+    background:rgba(28,59,46,0.4);
+  }
+
+  .panel h2{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--ball);
+    margin-bottom:14px;
+  }
+
+  .checkpoint{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:12px 0;
+    border-bottom:1px solid rgba(244,241,232,0.1);
+  }
+  .checkpoint:last-child{border-bottom:none;}
+
+  .checkpoint-label{font-size:14px;}
+  .checkpoint-label small{display:block; color:var(--line-dim); font-size:11px; margin-top:2px;}
+
+  .checkpoint-value{
+    font-family:'JetBrains Mono', monospace;
+    font-size:20px;
+    font-weight:700;
+    color:var(--ball-dim);
+    min-width:64px;
+    text-align:right;
+  }
+  .checkpoint-value.active{color:var(--ball);}
+
+  .rep-count{
+    font-family:'JetBrains Mono', monospace;
+    font-size:56px;
+    font-weight:700;
+    line-height:1;
+    color:var(--ball);
+  }
+
+  .rep-label{
+    font-family:'JetBrains Mono', monospace;
+    font-size:11px;
+    letter-spacing:0.1em;
+    text-transform:uppercase;
+    color:var(--line-dim);
+    margin-top:4px;
+  }
+
+  .baseline-note{
+    font-size:12px;
+    color:var(--line-dim);
+    line-height:1.5;
+    margin-top:16px;
+    padding-top:16px;
+    border-top:1px solid rgba(244,241,232,0.1);
+  }
+
+  .baseline-note strong{color:var(--chalk);}
+
+  footer{
+    max-width:900px;
+    margin:32px auto 0;
+    font-size:12px;
+    color:var(--line-dim);
+    font-family:'JetBrains Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Serve Check — v1 Prototype</div>
+  <h1>Toss &amp; Prep Tracker</h1>
+  <p class="sub">Live pose tracking for solo serve reps. Tracks toss drift, shoulder turn, and front-foot load — runs entirely in your browser, nothing leaves this tab.</p>
+</header>
+
+<main>
+  <div>
+    <div class="video-wrap">
+      <video id="video" autoplay playsinline muted></video>
+      <canvas id="overlay"></canvas>
+      <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">Not started</span></div>
+    </div>
+    <div class="controls">
+      <button class="primary" id="startBtn">Start camera</button>
+      <button id="baselineBtn" disabled>Set baseline (10 good serves)</button>
+      <button id="resetBtn" disabled>Reset session</button>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>Session</h2>
+      <div class="rep-count" id="repCount">0</div>
+      <div class="rep-label">Serves tracked</div>
+    </div>
+
+    <div class="panel" style="margin-top:16px;">
+      <h2>Checkpoints — live</h2>
+      <div class="checkpoint">
+        <div class="checkpoint-label">Toss height<small>Wrist Y at apex vs. shoulder line</small></div>
+        <div class="checkpoint-value" id="tossVal">—</div>
+      </div>
+      <div class="checkpoint">
+        <div class="checkpoint-label">Toss drift<small>Horizontal offset from baseline</small></div>
+        <div class="checkpoint-value" id="driftVal">—</div>
+      </div>
+      <div class="checkpoint">
+        <div class="checkpoint-label">Shoulder turn<small>Shoulder line angle at load</small></div>
+        <div class="checkpoint-value" id="shoulderVal">—</div>
+      </div>
+      <div class="checkpoint">
+        <div class="checkpoint-label">Front-foot load<small>Knee-over-ankle at loading phase</small></div>
+        <div class="checkpoint-value" id="footVal">—</div>
+      </div>
+
+      <div class="baseline-note">
+        <strong>How to use:</strong> stand side-on to the camera, full body in frame. Hit "Set baseline" and serve 10 reps you know feel good (or that Maxime's approved). Everything after is scored against that baseline — not some generic ideal.
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer>MoveNet (TensorFlow.js) · Runs client-side · v1 — toss / shoulder / foot only. Racket speed is v2.</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.11.0/dist/tf-converter.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl@4.11.0/dist/tf-backend-webgl.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
+
+<script>
+const video = document.getElementById('video');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+const startBtn = document.getElementById('startBtn');
+const baselineBtn = document.getElementById('baselineBtn');
+const resetBtn = document.getElementById('resetBtn');
+const repCountEl = document.getElementById('repCount');
+const tossVal = document.getElementById('tossVal');
+const driftVal = document.getElementById('driftVal');
+const shoulderVal = document.getElementById('shoulderVal');
+const footVal = document.getElementById('footVal');
+
+let detector = null;
+let running = false;
+let repCount = 0;
+
+// State machine phases: 'ready' -> 'rising' -> 'apex(logged)' -> 'ready'
+let phase = 'ready';
+let wristYHistory = [];
+let baseline = { tossApexY: null, tossX: null, shoulderAngle: null, sampleCount: 0, collecting: false };
+
+const SKELETON_EDGES = [
+  ['left_shoulder','right_shoulder'],['left_shoulder','left_elbow'],['left_elbow','left_wrist'],
+  ['right_shoulder','right_elbow'],['right_elbow','right_wrist'],
+  ['left_shoulder','left_hip'],['right_shoulder','right_hip'],['left_hip','right_hip'],
+  ['left_hip','left_knee'],['left_knee','left_ankle'],
+  ['right_hip','right_knee'],['right_knee','right_ankle']
+];
+
+function angleBetween(p1, p2){
+  return Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180/Math.PI);
+}
+
+function getPoint(keypoints, name){
+  const kp = keypoints.find(k => k.name === name);
+  if(!kp || kp.score < 0.35) return null;
+  return kp;
+}
+
+async function setup(){
+  statusText.textContent = 'Loading model…';
+  await tf.setBackend('webgl');
+  await tf.ready();
+  detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
+    modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
+  });
+
+  const stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480 }, audio:false });
+  video.srcObject = stream;
+  await new Promise(res => video.onloadedmetadata = res);
+  video.play();
+
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  running = true;
+  statusDot.classList.add('live');
+  statusText.textContent = 'Tracking';
+  baselineBtn.disabled = false;
+  resetBtn.disabled = false;
+  startBtn.disabled = true;
+  loop();
+}
+
+function drawSkeleton(keypoints){
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+
+  ctx.strokeStyle = '#d4e157';
+  ctx.lineWidth = 2;
+  SKELETON_EDGES.forEach(([a,b]) => {
+    const p1 = getPoint(keypoints, a);
+    const p2 = getPoint(keypoints, b);
+    if(p1 && p2){
+      ctx.beginPath();
+      ctx.moveTo(p1.x, p1.y);
+      ctx.lineTo(p2.x, p2.y);
+      ctx.stroke();
+    }
+  });
+
+  keypoints.forEach(kp => {
+    if(kp.score > 0.35){
+      ctx.beginPath();
+      ctx.arc(kp.x, kp.y, 4, 0, 2*Math.PI);
+      ctx.fillStyle = '#f4f1e8';
+      ctx.fill();
+    }
+  });
+}
+
+function processServeLogic(keypoints){
+  const rWrist = getPoint(keypoints, 'right_wrist');
+  const lShoulder = getPoint(keypoints, 'left_shoulder');
+  const rShoulder = getPoint(keypoints, 'right_shoulder');
+  const lHip = getPoint(keypoints, 'left_hip');
+  const lKnee = getPoint(keypoints, 'left_knee');
+  const lAnkle = getPoint(keypoints, 'left_ankle');
+
+  if(!rWrist || !lShoulder || !rShoulder) return;
+
+  // Track wrist Y over time to find local minimum (apex = lowest Y in image coords = highest point)
+  wristYHistory.push(rWrist.y);
+  if(wristYHistory.length > 8) wristYHistory.shift();
+
+  const shoulderY = (lShoulder.y + rShoulder.y)/2;
+
+  // Phase detection: rising when wrist moves above shoulder line and decelerating
+  if(phase === 'ready' && rWrist.y < shoulderY - 20){
+    phase = 'rising';
+  }
+
+  if(phase === 'rising' && wristYHistory.length === 8){
+    const recent = wristYHistory.slice(-4);
+    const isDecelerating = recent[3] >= recent[2] - 2; // wrist stopped rising
+    if(isDecelerating){
+      logTossApex(rWrist, shoulderY, lShoulder, rShoulder, lHip, lKnee, lAnkle);
+      phase = 'apex_logged';
+    }
+  }
+
+  if(phase === 'apex_logged' && rWrist.y > shoulderY + 40){
+    phase = 'ready'; // reset once arm drops back down
+  }
+}
+
+function logTossApex(rWrist, shoulderY, lShoulder, rShoulder, lHip, lKnee, lAnkle){
+  const shoulderAngle = angleBetween(lShoulder, rShoulder);
+  const heightAboveShoulder = Math.round(shoulderY - rWrist.y);
+
+  if(baseline.collecting){
+    baseline.tossApexY = (baseline.tossApexY || 0) + heightAboveShoulder;
+    baseline.tossX = (baseline.tossX || 0) + rWrist.x;
+    baseline.shoulderAngle = (baseline.shoulderAngle || 0) + Math.abs(shoulderAngle);
+    baseline.sampleCount++;
+    tossVal.textContent = `${baseline.sampleCount}/10`;
+    tossVal.classList.add('active');
+    if(baseline.sampleCount >= 10){
+      baseline.tossApexY /= 10;
+      baseline.tossX /= 10;
+      baseline.shoulderAngle /= 10;
+      baseline.collecting = false;
+      statusText.textContent = 'Baseline set — tracking';
+      baselineBtn.textContent = 'Baseline set ✓';
+    }
+    return;
+  }
+
+  repCount++;
+  repCountEl.textContent = repCount;
+
+  tossVal.textContent = `${heightAboveShoulder}px`;
+  tossVal.classList.add('active');
+
+  if(baseline.tossX !== null){
+    const drift = Math.round(rWrist.x - baseline.tossX);
+    driftVal.textContent = `${drift > 0 ? '+' : ''}${drift}px`;
+    driftVal.classList.add('active');
+  }
+
+  shoulderVal.textContent = `${Math.abs(shoulderAngle).toFixed(0)}°`;
+  shoulderVal.classList.add('active');
+
+  if(lHip && lKnee && lAnkle){
+    const kneeOverAnkle = Math.round(lKnee.x - lAnkle.x);
+    footVal.textContent = `${kneeOverAnkle}px`;
+    footVal.classList.add('active');
+  }
+}
+
+async function loop(){
+  if(!running) return;
+  const poses = await detector.estimatePoses(video);
+  if(poses.length > 0){
+    drawSkeleton(poses[0].keypoints);
+    processServeLogic(poses[0].keypoints);
+  } else {
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+  }
+  requestAnimationFrame(loop);
+}
+
+startBtn.addEventListener('click', () => {
+  setup().catch(err => {
+    statusText.textContent = 'Camera access needed';
+    console.error(err);
+  });
+});
+
+baselineBtn.addEventListener('click', () => {
+  baseline = { tossApexY:0, tossX:0, shoulderAngle:0, sampleCount:0, collecting:true };
+  baselineBtn.textContent = 'Collecting…';
+  statusText.textContent = 'Serve 10 reps for baseline';
+});
+
+resetBtn.addEventListener('click', () => {
+  repCount = 0;
+  repCountEl.textContent = 0;
+  phase = 'ready';
+  wristYHistory = [];
+  [tossVal, driftVal, shoulderVal, footVal].forEach(el => { el.textContent = '—'; el.classList.remove('active'); });
+});
+</script>
+
+</body>
+</html>
