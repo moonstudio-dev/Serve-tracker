@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Serve Check — Toss Tracker v1</title>
+<title>Serve Check — Coach</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
@@ -11,264 +11,262 @@
     --court-green:#1c3b2e;
     --court-green-dark:#122a20;
     --chalk:#f4f1e8;
+    --chalk-dim:rgba(244,241,232,0.72);
     --ball:#d4e157;
     --ball-dim:#8a9a3a;
-    --clay:#c1440e;
+    --clay:#e07a45;
     --line-dim:rgba(244,241,232,0.28);
   }
-
   *{box-sizing:border-box; margin:0; padding:0;}
-
   body{
     background:var(--court-green-dark);
-    background-image:
-      linear-gradient(var(--court-green-dark), var(--court-green-dark)),
-      repeating-linear-gradient(0deg, transparent, transparent 79px, var(--line-dim) 79px, var(--line-dim) 80px);
     color:var(--chalk);
     font-family:'Space Grotesk', sans-serif;
     min-height:100vh;
     padding:24px 16px 60px;
   }
-
   header{
-    max-width:900px;
-    margin:0 auto 28px;
-    border-bottom:1px solid var(--line-dim);
-    padding-bottom:18px;
+    max-width:900px; margin:0 auto 20px;
+    border-bottom:1px solid var(--line-dim); padding-bottom:18px;
+    display:flex; flex-wrap:wrap; gap:16px; align-items:flex-end; justify-content:space-between;
   }
+  .eyebrow{font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ball); margin-bottom:8px;}
+  h1{font-size:clamp(28px, 5vw, 40px); font-weight:700; letter-spacing:-0.01em;}
+  .tabs{display:flex; gap:6px; flex-wrap:wrap;}
+  .tab{min-height:44px;}
+  .tab[aria-selected="true"]{background:var(--ball); border-color:var(--ball); color:var(--court-green-dark); font-weight:700;}
+  .coach-status{font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; display:flex; align-items:center; gap:6px; color:var(--chalk-dim); margin-top:10px;}
+  .view{max-width:900px; margin:0 auto;}
+  .view[hidden]{display:none;}
+  .live-grid{display:grid; grid-template-columns:1fr; gap:20px;}
+  @media(min-width:760px){ .live-grid{grid-template-columns: 1.3fr 1fr;} }
 
-  .eyebrow{
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    letter-spacing:0.14em;
-    text-transform:uppercase;
-    color:var(--ball);
-    margin-bottom:8px;
-  }
-
-  h1{
-    font-size:clamp(28px, 5vw, 40px);
-    font-weight:700;
-    letter-spacing:-0.01em;
-  }
-
-  .sub{
-    color:var(--line-dim);
-    font-size:14px;
-    margin-top:6px;
-    max-width:60ch;
-  }
-
-  main{
-    max-width:900px;
-    margin:0 auto;
-    display:grid;
-    grid-template-columns:1fr;
-    gap:20px;
-  }
-
-  @media(min-width:760px){
-    main{grid-template-columns: 1.3fr 1fr;}
-  }
-
-  .video-wrap{
-    position:relative;
-    background:#000;
-    border-radius:4px;
-    overflow:hidden;
-    aspect-ratio: 4/3;
-    border:1px solid var(--line-dim);
-  }
-
-  video, canvas{
-    position:absolute;
-    top:0; left:0;
-    width:100%; height:100%;
-    transform:scaleX(-1);
-  }
-
-  .status-pill{
-    position:absolute;
-    top:12px; left:12px;
-    z-index:5;
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    letter-spacing:0.08em;
-    text-transform:uppercase;
-    background:rgba(18,42,32,0.85);
-    border:1px solid var(--line-dim);
-    padding:6px 10px;
-    border-radius:2px;
-    display:flex;
-    align-items:center;
-    gap:6px;
-  }
-
+  .video-wrap{position:relative; background:#000; border-radius:4px; overflow:hidden; aspect-ratio:4/3; border:1px solid var(--line-dim);}
+  video, canvas{position:absolute; top:0; left:0; width:100%; height:100%; transform:scaleX(-1);}
+  .status-pill{position:absolute; top:12px; left:12px; z-index:5; font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.08em; text-transform:uppercase; background:rgba(18,42,32,0.85); border:1px solid var(--line-dim); padding:6px 10px; border-radius:2px; display:flex; align-items:center; gap:6px;}
   .dot{width:7px; height:7px; border-radius:50%; background:var(--clay);}
   .dot.live{background:var(--ball); box-shadow:0 0 8px var(--ball);}
+  .cue{position:absolute; left:12px; right:12px; bottom:12px; z-index:6; border-radius:4px; padding:14px 16px; display:none;}
+  .cue.show{display:block;}
+  .cue.good{background:var(--ball); color:var(--court-green-dark);}
+  .cue.warn{background:var(--clay); color:#1a0f08;}
+  .cue strong{display:block; font-size:24px;}
+  .cue span{font-size:15px;}
 
-  .controls{
-    display:flex;
-    gap:10px;
-    margin-top:14px;
-    flex-wrap:wrap;
-  }
-
+  .controls{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
   button{
-    font-family:'Space Grotesk', sans-serif;
-    font-weight:500;
-    font-size:14px;
-    background:transparent;
-    color:var(--chalk);
-    border:1px solid var(--chalk);
-    padding:10px 18px;
-    border-radius:2px;
-    cursor:pointer;
-    transition:all 0.15s ease;
+    font-family:'Space Grotesk', sans-serif; font-weight:500; font-size:14px;
+    background:transparent; color:var(--chalk); border:1px solid var(--chalk);
+    padding:10px 18px; border-radius:2px; cursor:pointer; transition:all 0.15s ease; min-height:44px;
   }
-
   button:hover{background:var(--chalk); color:var(--court-green-dark);}
   button:disabled{opacity:0.3; cursor:not-allowed;}
-
-  button.primary{
-    background:var(--ball);
-    border-color:var(--ball);
-    color:var(--court-green-dark);
-    font-weight:700;
-  }
+  button.primary{background:var(--ball); border-color:var(--ball); color:var(--court-green-dark); font-weight:700;}
   button.primary:hover{background:var(--chalk); border-color:var(--chalk);}
+  button.chip{border-radius:999px; border-color:var(--line-dim); font-size:14px;}
+  button.chip[aria-pressed="true"]{background:var(--chalk); color:var(--court-green-dark);}
 
-  .panel{
-    border:1px solid var(--line-dim);
-    border-radius:4px;
-    padding:18px;
-    background:rgba(28,59,46,0.4);
-  }
+  .panel{border:1px solid var(--line-dim); border-radius:4px; padding:18px; background:rgba(28,59,46,0.4);}
+  .panel + .panel{margin-top:16px;}
+  .panel h2{font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ball); margin-bottom:12px;}
+  .big{font-size:26px; font-weight:700; line-height:1.25;}
+  .lead{font-size:18px; line-height:1.5;}
+  .muted{color:var(--chalk-dim); font-size:14px; line-height:1.5;}
+  .stack{display:flex; flex-direction:column; gap:12px;}
+  .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center;}
+  .rep-count{font-family:'JetBrains Mono', monospace; font-size:56px; font-weight:700; line-height:1; color:var(--ball);}
+  .rep-label{font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; color:var(--chalk-dim); margin-top:4px;}
 
-  .panel h2{
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    letter-spacing:0.1em;
-    text-transform:uppercase;
-    color:var(--ball);
-    margin-bottom:14px;
-  }
-
-  .checkpoint{
-    display:flex;
-    justify-content:space-between;
-    align-items:baseline;
-    padding:12px 0;
-    border-bottom:1px solid rgba(244,241,232,0.1);
-  }
+  details{margin-top:14px;}
+  summary{cursor:pointer; color:var(--chalk-dim); font-size:14px; min-height:32px;}
+  .checkpoint{display:flex; justify-content:space-between; align-items:baseline; padding:10px 0; border-bottom:1px solid rgba(244,241,232,0.1);}
   .checkpoint:last-child{border-bottom:none;}
-
   .checkpoint-label{font-size:14px;}
-  .checkpoint-label small{display:block; color:var(--line-dim); font-size:11px; margin-top:2px;}
+  .checkpoint-value{font-family:'JetBrains Mono', monospace; font-size:18px; font-weight:700; color:var(--ball);}
 
-  .checkpoint-value{
-    font-family:'JetBrains Mono', monospace;
-    font-size:20px;
-    font-weight:700;
-    color:var(--ball-dim);
-    min-width:64px;
-    text-align:right;
-  }
-  .checkpoint-value.active{color:var(--ball);}
-
-  .rep-count{
-    font-family:'JetBrains Mono', monospace;
-    font-size:56px;
-    font-weight:700;
-    line-height:1;
-    color:var(--ball);
-  }
-
-  .rep-label{
-    font-family:'JetBrains Mono', monospace;
-    font-size:11px;
-    letter-spacing:0.1em;
-    text-transform:uppercase;
-    color:var(--line-dim);
-    margin-top:4px;
-  }
-
-  .baseline-note{
-    font-size:12px;
-    color:var(--line-dim);
-    line-height:1.5;
-    margin-top:16px;
-    padding-top:16px;
-    border-top:1px solid rgba(244,241,232,0.1);
-  }
-
-  .baseline-note strong{color:var(--chalk);}
-
-  footer{
-    max-width:900px;
-    margin:32px auto 0;
-    font-size:12px;
-    color:var(--line-dim);
-    font-family:'JetBrains Mono', monospace;
-  }
+  .coach-grid{display:grid; grid-template-columns:1fr; gap:16px;}
+  .img-frame{border-radius:4px; overflow:hidden; border:1px solid var(--line-dim); background:#000;}
+  .img-frame img{display:block; width:100%; height:auto;}
+  .status{display:inline-block; padding:5px 12px; border-radius:999px; font-size:13px; font-weight:700;}
+  .status.good{background:var(--ball); color:var(--court-green-dark);}
+  .status.fix{background:var(--clay); color:#1a0f08;}
+  .status.none{background:rgba(244,241,232,0.15); color:var(--chalk);}
+  .drill{display:flex; flex-wrap:wrap; gap:14px; align-items:center; justify-content:space-between;}
+  .dose{background:var(--ball); color:var(--court-green-dark); font-weight:700; padding:8px 14px; border-radius:4px;}
+  .answer{background:var(--chalk); color:var(--court-green-dark); border-radius:4px; padding:14px 16px; font-size:16px; line-height:1.5;}
+  .answer .who{font-family:'JetBrains Mono', monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; color:#3a5a2c;}
+  .trend{display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:12px;}
+  .trend-card{background:rgba(18,42,32,0.6); border-radius:4px; padding:12px;}
+  .bars{display:flex; align-items:flex-end; gap:10px; height:70px; border-bottom:1px solid var(--line-dim); margin-top:8px;}
+  .bar{flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; font-size:13px;}
+  .bar i{display:block; width:100%; max-width:40px; border-radius:3px 3px 0 0;}
+  .bar-labels{display:flex; gap:10px; font-size:11px; color:var(--chalk-dim); margin-top:4px;}
+  .bar-labels span{flex:1; text-align:center;}
+  .session{border-bottom:1px solid rgba(244,241,232,0.1); padding:12px 0;}
+  .session:last-child{border-bottom:none;}
+  .session strong{display:block; margin-bottom:4px;}
+  .note{color:var(--chalk-dim); font-size:14px; margin-top:4px;}
+  label{font-size:14px; font-weight:500;}
+  input[type="text"]{flex:1; min-width:200px; min-height:44px; padding:0 12px; font-family:'Space Grotesk', sans-serif; font-size:15px; background:rgba(18,42,32,0.6); color:var(--chalk); border:1px solid var(--line-dim); border-radius:2px;}
+  input[type="text"]::placeholder{color:rgba(244,241,232,0.5);}
+  .banner{max-width:900px; margin:0 auto 16px; padding:10px 14px; border:1px solid var(--clay); border-radius:4px; font-size:14px; display:none;}
+  .banner.show{display:block;}
+  .loading{color:var(--chalk-dim); font-size:16px;}
+  footer{max-width:900px; margin:32px auto 0; font-size:12px; color:var(--chalk-dim); font-family:'JetBrains Mono', monospace;}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="eyebrow">Serve Check — v1 Prototype</div>
-  <h1>Toss &amp; Prep Tracker</h1>
-  <p class="sub">Live pose tracking for solo serve reps. Tracks toss drift, shoulder turn, and front-foot load — runs entirely in your browser, nothing leaves this tab.</p>
+  <div>
+    <div class="eyebrow">Serve Check — v1 Prototype</div>
+    <h1>Your serve coach</h1>
+    <div class="coach-status"><span class="dot" id="coachDot"></span><span id="coachStatus">Checking coach…</span></div>
+  </div>
+  <nav class="tabs" role="tablist" aria-label="Modes">
+    <button class="tab" role="tab" id="tab-live" aria-selected="true" data-view="live">Live</button>
+    <button class="tab" role="tab" id="tab-coach" aria-selected="false" data-view="coach">Coach</button>
+    <button class="tab" role="tab" id="tab-log" aria-selected="false" data-view="log">Log</button>
+  </nav>
 </header>
 
-<main>
-  <div>
-    <div class="video-wrap">
-      <video id="video" autoplay playsinline muted></video>
-      <canvas id="overlay"></canvas>
-      <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">Not started</span></div>
+<div class="banner" id="offlineBanner">Your coach (the ADK agent) isn’t reachable, so you’re seeing example coaching. Start the agent and refresh to get live coaching.</div>
+
+<!-- LIVE -->
+<section class="view" id="view-live">
+  <div class="live-grid">
+    <div>
+      <div class="video-wrap">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div class="status-pill"><span class="dot" id="statusDot"></span><span id="statusText">Not started</span></div>
+        <div class="cue" id="cue" aria-live="polite"><strong id="cueTitle"></strong><span id="cueTip"></span></div>
+      </div>
+      <div class="controls">
+        <button class="primary" id="startBtn">Start camera</button>
+        <button id="baselineBtn" disabled>Set baseline (10 good serves)</button>
+        <button id="demoBtn">Load demo session</button>
+        <button id="nextDemoBtn" hidden>Next demo serve</button>
+      </div>
     </div>
-    <div class="controls">
-      <button class="primary" id="startBtn">Start camera</button>
-      <button id="baselineBtn" disabled>Set baseline (10 good serves)</button>
-      <button id="resetBtn" disabled>Reset session</button>
+
+    <div>
+      <div class="panel">
+        <h2>Session</h2>
+        <div class="rep-count" id="repCount">0</div>
+        <div class="rep-label">Serves tracked</div>
+        <div class="controls">
+          <button class="primary" id="endBtn" disabled>End session &amp; get coaching</button>
+          <button id="voiceBtn" aria-pressed="true">Voice cues: on</button>
+          <button id="resetBtn">Reset</button>
+        </div>
+        <details>
+          <summary>Show the measurements</summary>
+          <div class="checkpoint"><div class="checkpoint-label">Toss height</div><div class="checkpoint-value" id="tossVal">—</div></div>
+          <div class="checkpoint"><div class="checkpoint-label">Toss drift</div><div class="checkpoint-value" id="driftVal">—</div></div>
+          <div class="checkpoint"><div class="checkpoint-label">Shoulder turn</div><div class="checkpoint-value" id="shoulderVal">—</div></div>
+          <div class="checkpoint"><div class="checkpoint-label">Front-foot load</div><div class="checkpoint-value" id="footVal">—</div></div>
+        </details>
+        <p class="muted" style="margin-top:14px;"><strong>How to use:</strong> stand side-on to the camera, full body in frame. Set a baseline with 10 serves you know feel good (or that Maxime’s approved). Every serve after that is checked against your baseline, with an instant cue.</p>
+      </div>
     </div>
   </div>
+</section>
 
-  <div>
+<!-- COACH -->
+<section class="view" id="view-coach" hidden>
+  <div id="coachEmpty" class="panel"><p class="lead">Finish a session in Live mode, or load the demo session, then tap “End session &amp; get coaching”.</p></div>
+  <div id="coachLoading" class="panel" hidden><p class="loading">Your coach is looking at your session…</p></div>
+  <div id="coachCard" class="coach-grid" hidden>
+    <div class="panel stack">
+      <h2>Your coach’s take</h2>
+      <p class="big" id="cPraise"></p>
+      <p class="lead">One thing for next time: <strong id="cHeadline"></strong></p>
+      <p class="muted" id="cFix"></p>
+      <p class="muted" id="cWhy"></p>
+      <div class="row"><button id="hearBtn">Hear it</button></div>
+    </div>
+
+    <div class="panel stack">
+      <div class="row" style="justify-content:space-between;">
+        <h2 style="margin:0;">Serve breakdown · you vs your coach</h2>
+        <div class="row" role="group" aria-label="Serve phase">
+          <button class="chip" data-phase="toss" aria-pressed="false">Toss</button>
+          <button class="chip" data-phase="trophy" aria-pressed="false">Trophy</button>
+          <button class="chip" data-phase="follow" aria-pressed="false">Follow-through</button>
+        </div>
+      </div>
+      <div class="img-frame"><img id="phaseImg" src="pair_trophy.jpg" alt="Your serve next to your coach's at this phase"></div>
+      <div class="row"><span class="status" id="phaseStatus"></span><strong id="phaseYou"></strong></div>
+      <p><strong>Coach:</strong> <span id="phaseCue"></span></p>
+      <div class="trend" id="phaseTrend"></div>
+    </div>
+
     <div class="panel">
-      <h2>Session</h2>
-      <div class="rep-count" id="repCount">0</div>
-      <div class="rep-label">Serves tracked</div>
+      <h2>Your drill</h2>
+      <div class="drill">
+        <div style="flex:1; min-width:220px;">
+          <p class="big" id="dName"></p>
+          <p class="muted" id="dHow"></p>
+        </div>
+        <span class="dose" id="dDose"></span>
+      </div>
     </div>
 
-    <div class="panel" style="margin-top:16px;">
-      <h2>Checkpoints — live</h2>
-      <div class="checkpoint">
-        <div class="checkpoint-label">Toss height<small>Wrist Y at apex vs. shoulder line</small></div>
-        <div class="checkpoint-value" id="tossVal">—</div>
+    <div class="panel stack">
+      <h2>Ask your coach</h2>
+      <div class="row">
+        <label for="askInput" class="muted" style="width:100%;">Type a question about today’s serve</label>
+        <input type="text" id="askInput" placeholder="e.g. Why is my second serve worse?">
+        <button class="primary" id="askBtn">Ask</button>
       </div>
-      <div class="checkpoint">
-        <div class="checkpoint-label">Toss drift<small>Horizontal offset from baseline</small></div>
-        <div class="checkpoint-value" id="driftVal">—</div>
+      <div class="row">
+        <button class="chip" data-ask="Can you give me another drill for my main fix?">Show another drill</button>
+        <button class="chip" data-ask="Why does this fix matter for my serve?">Why does this matter?</button>
       </div>
-      <div class="checkpoint">
-        <div class="checkpoint-label">Shoulder turn<small>Shoulder line angle at load</small></div>
-        <div class="checkpoint-value" id="shoulderVal">—</div>
-      </div>
-      <div class="checkpoint">
-        <div class="checkpoint-label">Front-foot load<small>Knee-over-ankle at loading phase</small></div>
-        <div class="checkpoint-value" id="footVal">—</div>
-      </div>
-
-      <div class="baseline-note">
-        <strong>How to use:</strong> stand side-on to the camera, full body in frame. Hit "Set baseline" and serve 10 reps you know feel good (or that Maxime's approved). Everything after is scored against that baseline — not some generic ideal.
-      </div>
+      <div id="coachAnswer"></div>
     </div>
   </div>
-</main>
+</section>
 
-<footer>MoveNet (TensorFlow.js) · Runs client-side · v1 — toss / shoulder / foot only. Racket speed is v2.</footer>
+<!-- LOG -->
+<section class="view" id="view-log" hidden>
+  <div class="panel stack">
+    <h2>Your serve today</h2>
+    <div class="img-frame"><img src="my_serve.jpg" alt="Your serve in three phases: toss, trophy position, follow-through"></div>
+    <p class="muted">Each session saves key frames, so you can watch your serve change over time.</p>
+  </div>
+
+  <div class="panel stack">
+    <div class="row" style="justify-content:space-between;">
+      <h2 style="margin:0;">Compare today with</h2>
+      <div class="row" role="group" aria-label="Compare today with" id="compareBtns"></div>
+    </div>
+    <div id="compareOut" class="stack"><p class="loading">Pick a session to compare.</p></div>
+  </div>
+
+  <div class="panel stack">
+    <h2>Your sessions and notes</h2>
+    <div id="sessionList"></div>
+    <div class="row">
+      <label for="noteInput" class="muted" style="width:100%;">Add a note to today: what did you try?</label>
+      <input type="text" id="noteInput" placeholder="e.g. Tried the knee pause, felt more stable">
+      <button id="noteBtn">Save note</button>
+    </div>
+  </div>
+
+  <div class="panel stack">
+    <h2>Ask your coach</h2>
+    <div class="row">
+      <button class="chip" data-logask="Did my toss drills help?">Did my toss drills help?</button>
+      <button class="chip" data-logask="What should I try next week?">What should I try next week?</button>
+      <button class="chip" data-logask="Why should I focus on my serve?">Why focus on my serve?</button>
+    </div>
+    <div id="logAnswer"></div>
+  </div>
+</section>
+
+<footer>MoveNet (TensorFlow.js) runs in your browser · Coaching by your ADK agent on this laptop · v1: toss and trophy position. Follow-through is v2.</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core@4.11.0/dist/tf-core.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter@4.11.0/dist/tf-converter.min.js"></script>
@@ -276,210 +274,354 @@
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/pose-detection@2.1.3/dist/pose-detection.min.js"></script>
 
 <script>
-const video = document.getElementById('video');
-const canvas = document.getElementById('overlay');
-const ctx = canvas.getContext('2d');
-const statusDot = document.getElementById('statusDot');
-const statusText = document.getElementById('statusText');
-const startBtn = document.getElementById('startBtn');
-const baselineBtn = document.getElementById('baselineBtn');
-const resetBtn = document.getElementById('resetBtn');
-const repCountEl = document.getElementById('repCount');
-const tossVal = document.getElementById('tossVal');
-const driftVal = document.getElementById('driftVal');
-const shoulderVal = document.getElementById('shoulderVal');
-const footVal = document.getElementById('footVal');
+/* ============ Settings ============ */
+const AGENT_URL = 'http://127.0.0.1:8000';
+const APP_NAME = 'serve_coach';
+const USER_ID = 'player';
+const CHECKS = ['toss_height_ratio','toss_drift_cm','shoulder_turn_deg','front_knee_offset_cm'];
+const CHECK_NAMES = { toss_height_ratio:'Toss height', toss_drift_cm:'Toss drift', shoulder_turn_deg:'Shoulder turn', front_knee_offset_cm:'Front knee' };
+const CUES = {
+  ok:{ title:'Good serve', tip:'Same as your best serves. Keep it going.', word:'Good' },
+  toss_height_ratio:{ title:'Toss height', tip:'Release the ball at the same height every time.', word:'Toss' },
+  toss_drift_cm:{ title:'Toss forward', tip:'Your toss drifted. Release it in the same spot.', word:'Toss' },
+  shoulder_turn_deg:{ title:'Turn your shoulders', tip:'Get more side-on before you swing.', word:'Turn' },
+  front_knee_offset_cm:{ title:'Knee over ankle', tip:'Your front knee slid forward. Bend down, not forward.', word:'Knee' }
+};
+/* Demo session: today's 10 serves (from Serve Check sample data) */
+const DEMO_SERVES = [[],[],[],['front_knee_offset_cm'],[],['front_knee_offset_cm'],[],['shoulder_turn_deg','front_knee_offset_cm'],['shoulder_turn_deg'],['front_knee_offset_cm']];
+const SEED_HISTORY = [
+  { date:'10 Oct', counts:{ toss_height_ratio:0, toss_drift_cm:6, shoulder_turn_deg:0, front_knee_offset_cm:0 }, total:10, notes:['Coach said toss in front of me. Hard to control.'] },
+  { date:'17 Oct', counts:{ toss_height_ratio:0, toss_drift_cm:2, shoulder_turn_deg:3, front_knee_offset_cm:0 }, total:10, notes:['Did the toss-and-catch drill three times this week.'] }
+];
 
-let detector = null;
-let running = false;
-let repCount = 0;
+/* ============ Storage ============ */
+function load(key, fallback){ try{ const v = localStorage.getItem(key); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; } }
+function save(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+let history = load('sc_history', null) || SEED_HISTORY.slice();
+let today = load('sc_today', null);   // { date, counts, total, notes, serves }
 
-// State machine phases: 'ready' -> 'rising' -> 'apex(logged)' -> 'ready'
-let phase = 'ready';
-let wristYHistory = [];
-let baseline = { tossApexY: null, tossX: null, shoulderAngle: null, sampleCount: 0, collecting: false };
+/* ============ Live tracking (original Serve Check logic) ============ */
+const $ = (id) => document.getElementById(id);
+const video = $('video'), canvas = $('overlay'), ctx = canvas.getContext('2d');
+const statusDot = $('statusDot'), statusText = $('statusText');
+const startBtn = $('startBtn'), baselineBtn = $('baselineBtn'), resetBtn = $('resetBtn');
+const repCountEl = $('repCount'), tossVal = $('tossVal'), driftVal = $('driftVal'), shoulderVal = $('shoulderVal'), footVal = $('footVal');
+
+let detector = null, running = false, repCount = 0, phase = 'ready', wristYHistory = [];
+let baseline = { tossApexY:null, tossX:null, shoulderAngle:null, knee:null, sampleCount:0, collecting:false };
+let sessionServes = [];
+let voiceOn = true;
 
 const SKELETON_EDGES = [
   ['left_shoulder','right_shoulder'],['left_shoulder','left_elbow'],['left_elbow','left_wrist'],
   ['right_shoulder','right_elbow'],['right_elbow','right_wrist'],
   ['left_shoulder','left_hip'],['right_shoulder','right_hip'],['left_hip','right_hip'],
-  ['left_hip','left_knee'],['left_knee','left_ankle'],
-  ['right_hip','right_knee'],['right_knee','right_ankle']
+  ['left_hip','left_knee'],['left_knee','left_ankle'],['right_hip','right_knee'],['right_knee','right_ankle']
 ];
-
-function angleBetween(p1, p2){
-  return Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180/Math.PI);
-}
-
-function getPoint(keypoints, name){
-  const kp = keypoints.find(k => k.name === name);
-  if(!kp || kp.score < 0.35) return null;
-  return kp;
-}
+function angleBetween(p1, p2){ return Math.atan2(p2.y - p1.y, p2.x - p1.x) * (180/Math.PI); }
+function getPoint(keypoints, name){ const kp = keypoints.find(k => k.name === name); if(!kp || kp.score < 0.35) return null; return kp; }
 
 async function setup(){
   statusText.textContent = 'Loading model…';
-  await tf.setBackend('webgl');
-  await tf.ready();
-  detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, {
-    modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING
-  });
-
-  const stream = await navigator.mediaDevices.getUserMedia({ video: { width:640, height:480 }, audio:false });
+  await tf.setBackend('webgl'); await tf.ready();
+  detector = await poseDetection.createDetector(poseDetection.SupportedModels.MoveNet, { modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING });
+  const stream = await navigator.mediaDevices.getUserMedia({ video:{ width:640, height:480 }, audio:false });
   video.srcObject = stream;
   await new Promise(res => video.onloadedmetadata = res);
   video.play();
-
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-
+  canvas.width = video.videoWidth; canvas.height = video.videoHeight;
   running = true;
-  statusDot.classList.add('live');
-  statusText.textContent = 'Tracking';
-  baselineBtn.disabled = false;
-  resetBtn.disabled = false;
-  startBtn.disabled = true;
+  statusDot.classList.add('live'); statusText.textContent = 'Tracking';
+  baselineBtn.disabled = false; startBtn.disabled = true;
   loop();
 }
 
 function drawSkeleton(keypoints){
   ctx.clearRect(0,0,canvas.width, canvas.height);
-
-  ctx.strokeStyle = '#d4e157';
-  ctx.lineWidth = 2;
-  SKELETON_EDGES.forEach(([a,b]) => {
-    const p1 = getPoint(keypoints, a);
-    const p2 = getPoint(keypoints, b);
-    if(p1 && p2){
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-      ctx.stroke();
-    }
-  });
-
-  keypoints.forEach(kp => {
-    if(kp.score > 0.35){
-      ctx.beginPath();
-      ctx.arc(kp.x, kp.y, 4, 0, 2*Math.PI);
-      ctx.fillStyle = '#f4f1e8';
-      ctx.fill();
-    }
-  });
+  ctx.strokeStyle = '#d4e157'; ctx.lineWidth = 2;
+  SKELETON_EDGES.forEach(([a,b]) => { const p1 = getPoint(keypoints,a), p2 = getPoint(keypoints,b); if(p1 && p2){ ctx.beginPath(); ctx.moveTo(p1.x,p1.y); ctx.lineTo(p2.x,p2.y); ctx.stroke(); } });
+  keypoints.forEach(kp => { if(kp.score > 0.35){ ctx.beginPath(); ctx.arc(kp.x, kp.y, 4, 0, 2*Math.PI); ctx.fillStyle = '#f4f1e8'; ctx.fill(); } });
 }
 
 function processServeLogic(keypoints){
-  const rWrist = getPoint(keypoints, 'right_wrist');
-  const lShoulder = getPoint(keypoints, 'left_shoulder');
-  const rShoulder = getPoint(keypoints, 'right_shoulder');
-  const lHip = getPoint(keypoints, 'left_hip');
-  const lKnee = getPoint(keypoints, 'left_knee');
-  const lAnkle = getPoint(keypoints, 'left_ankle');
-
+  const rWrist = getPoint(keypoints,'right_wrist'), lShoulder = getPoint(keypoints,'left_shoulder'), rShoulder = getPoint(keypoints,'right_shoulder');
+  const lHip = getPoint(keypoints,'left_hip'), lKnee = getPoint(keypoints,'left_knee'), lAnkle = getPoint(keypoints,'left_ankle');
   if(!rWrist || !lShoulder || !rShoulder) return;
-
-  // Track wrist Y over time to find local minimum (apex = lowest Y in image coords = highest point)
-  wristYHistory.push(rWrist.y);
-  if(wristYHistory.length > 8) wristYHistory.shift();
-
+  wristYHistory.push(rWrist.y); if(wristYHistory.length > 8) wristYHistory.shift();
   const shoulderY = (lShoulder.y + rShoulder.y)/2;
-
-  // Phase detection: rising when wrist moves above shoulder line and decelerating
-  if(phase === 'ready' && rWrist.y < shoulderY - 20){
-    phase = 'rising';
-  }
-
+  if(phase === 'ready' && rWrist.y < shoulderY - 20){ phase = 'rising'; }
   if(phase === 'rising' && wristYHistory.length === 8){
     const recent = wristYHistory.slice(-4);
-    const isDecelerating = recent[3] >= recent[2] - 2; // wrist stopped rising
-    if(isDecelerating){
-      logTossApex(rWrist, shoulderY, lShoulder, rShoulder, lHip, lKnee, lAnkle);
-      phase = 'apex_logged';
-    }
+    if(recent[3] >= recent[2] - 2){ logTossApex(rWrist, shoulderY, lShoulder, rShoulder, lHip, lKnee, lAnkle); phase = 'apex_logged'; }
   }
-
-  if(phase === 'apex_logged' && rWrist.y > shoulderY + 40){
-    phase = 'ready'; // reset once arm drops back down
-  }
+  if(phase === 'apex_logged' && rWrist.y > shoulderY + 40){ phase = 'ready'; }
 }
 
 function logTossApex(rWrist, shoulderY, lShoulder, rShoulder, lHip, lKnee, lAnkle){
-  const shoulderAngle = angleBetween(lShoulder, rShoulder);
-  const heightAboveShoulder = Math.round(shoulderY - rWrist.y);
+  const shoulderAngle = Math.abs(angleBetween(lShoulder, rShoulder));
+  const height = Math.round(shoulderY - rWrist.y);
+  const knee = (lHip && lKnee && lAnkle) ? Math.round(lKnee.x - lAnkle.x) : null;
 
   if(baseline.collecting){
-    baseline.tossApexY = (baseline.tossApexY || 0) + heightAboveShoulder;
-    baseline.tossX = (baseline.tossX || 0) + rWrist.x;
-    baseline.shoulderAngle = (baseline.shoulderAngle || 0) + Math.abs(shoulderAngle);
+    baseline.tossApexY += height; baseline.tossX += rWrist.x; baseline.shoulderAngle += shoulderAngle;
+    if(knee !== null){ baseline.knee += knee; baseline.kneeN++; }
     baseline.sampleCount++;
     tossVal.textContent = `${baseline.sampleCount}/10`;
-    tossVal.classList.add('active');
+    showCue({ title:`Baseline ${baseline.sampleCount}/10`, tip:'Keep serving the way you know is right.' }, true, null);
     if(baseline.sampleCount >= 10){
-      baseline.tossApexY /= 10;
-      baseline.tossX /= 10;
-      baseline.shoulderAngle /= 10;
+      baseline.tossApexY /= 10; baseline.tossX /= 10; baseline.shoulderAngle /= 10;
+      baseline.knee = baseline.kneeN ? baseline.knee / baseline.kneeN : null;
       baseline.collecting = false;
       statusText.textContent = 'Baseline set — tracking';
       baselineBtn.textContent = 'Baseline set ✓';
+      showCue({ title:'Baseline set', tip:'Now serve. Each serve gets an instant cue.' }, true, null);
     }
     return;
   }
 
-  repCount++;
-  repCountEl.textContent = repCount;
-
-  tossVal.textContent = `${heightAboveShoulder}px`;
-  tossVal.classList.add('active');
-
+  tossVal.textContent = `${height}px`;
+  shoulderVal.textContent = `${shoulderAngle.toFixed(0)}°`;
+  if(knee !== null) footVal.textContent = `${knee}px`;
+  const flags = [];
   if(baseline.tossX !== null){
     const drift = Math.round(rWrist.x - baseline.tossX);
     driftVal.textContent = `${drift > 0 ? '+' : ''}${drift}px`;
-    driftVal.classList.add('active');
+    if(Math.abs(height - baseline.tossApexY) > Math.max(15, baseline.tossApexY * 0.15)) flags.push('toss_height_ratio');
+    if(Math.abs(drift) > 25) flags.push('toss_drift_cm');
+    if(Math.abs(shoulderAngle - baseline.shoulderAngle) > 6) flags.push('shoulder_turn_deg');
+    if(knee !== null && baseline.knee !== null && Math.abs(knee - baseline.knee) > 15) flags.push('front_knee_offset_cm');
   }
-
-  shoulderVal.textContent = `${Math.abs(shoulderAngle).toFixed(0)}°`;
-  shoulderVal.classList.add('active');
-
-  if(lHip && lKnee && lAnkle){
-    const kneeOverAnkle = Math.round(lKnee.x - lAnkle.x);
-    footVal.textContent = `${kneeOverAnkle}px`;
-    footVal.classList.add('active');
-  }
+  recordServe(flags, baseline.tossX !== null);
 }
+
+/* Rules give the instant cue: no AI, no waiting */
+function recordServe(flags, hasBaseline){
+  sessionServes.push(flags);
+  repCount = sessionServes.length; repCountEl.textContent = repCount;
+  $('endBtn').disabled = false;
+  if(!hasBaseline){ showCue({ title:'Serve tracked', tip:'Set a baseline to get feedback on each serve.' }, true, null); return; }
+  const key = flags.length ? flags[flags.length - 1] : 'ok';
+  showCue(CUES[key], flags.length === 0, CUES[key].word);
+}
+
+function showCue(c, good, word){
+  const el = $('cue');
+  $('cueTitle').textContent = c.title; $('cueTip').textContent = c.tip;
+  el.className = 'cue show ' + (good ? 'good' : 'warn');
+  if(word && voiceOn) say(word);
+}
+
+function say(text){ try{ const s = window.speechSynthesis; s.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.95; s.speak(u); }catch(e){} }
 
 async function loop(){
   if(!running) return;
   const poses = await detector.estimatePoses(video);
-  if(poses.length > 0){
-    drawSkeleton(poses[0].keypoints);
-    processServeLogic(poses[0].keypoints);
-  } else {
-    ctx.clearRect(0,0,canvas.width, canvas.height);
-  }
+  if(poses.length > 0){ drawSkeleton(poses[0].keypoints); processServeLogic(poses[0].keypoints); }
+  else { ctx.clearRect(0,0,canvas.width, canvas.height); }
   requestAnimationFrame(loop);
 }
 
-startBtn.addEventListener('click', () => {
-  setup().catch(err => {
-    statusText.textContent = 'Camera access needed';
-    console.error(err);
-  });
-});
-
+startBtn.addEventListener('click', () => { setup().catch(err => { statusText.textContent = 'Camera access needed'; console.error(err); }); });
 baselineBtn.addEventListener('click', () => {
-  baseline = { tossApexY:0, tossX:0, shoulderAngle:0, sampleCount:0, collecting:true };
-  baselineBtn.textContent = 'Collecting…';
-  statusText.textContent = 'Serve 10 reps for baseline';
+  baseline = { tossApexY:0, tossX:0, shoulderAngle:0, knee:0, kneeN:0, sampleCount:0, collecting:true };
+  baselineBtn.textContent = 'Collecting…'; statusText.textContent = 'Serve 10 reps for baseline';
+});
+function resetSession(){
+  repCount = 0; repCountEl.textContent = 0; phase = 'ready'; wristYHistory = []; sessionServes = []; demoIdx = 0;
+  $('endBtn').disabled = true; $('nextDemoBtn').hidden = true; $('cue').className = 'cue';
+  [tossVal, driftVal, shoulderVal, footVal].forEach(el => el.textContent = '—');
+}
+resetBtn.addEventListener('click', resetSession);
+$('voiceBtn').addEventListener('click', (e) => { voiceOn = !voiceOn; e.target.textContent = voiceOn ? 'Voice cues: on' : 'Voice cues: off'; e.target.setAttribute('aria-pressed', String(voiceOn)); });
+
+/* Demo playback: same rules path as live serves */
+let demoIdx = 0;
+$('demoBtn').addEventListener('click', () => { resetSession(); $('nextDemoBtn').hidden = false; $('nextDemoBtn').textContent = 'Play serve 1'; statusText.textContent = 'Demo session'; });
+$('nextDemoBtn').addEventListener('click', () => {
+  if(demoIdx >= DEMO_SERVES.length){ endSession(); return; }
+  recordServe(DEMO_SERVES[demoIdx], true); demoIdx++;
+  $('nextDemoBtn').textContent = demoIdx >= DEMO_SERVES.length ? 'All 10 done: get coaching' : 'Next demo serve';
 });
 
-resetBtn.addEventListener('click', () => {
-  repCount = 0;
-  repCountEl.textContent = 0;
-  phase = 'ready';
-  wristYHistory = [];
-  [tossVal, driftVal, shoulderVal, footVal].forEach(el => { el.textContent = '—'; el.classList.remove('active'); });
+/* ============ Agent connection (ADK API server) ============ */
+let agentSessionId = null, agentOnline = false;
+async function checkAgent(){
+  try{
+    const r = await fetch(`${AGENT_URL}/apps/${APP_NAME}/users/${USER_ID}/sessions`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:'{}' });
+    if(!r.ok) throw new Error('status ' + r.status);
+    agentSessionId = (await r.json()).id; agentOnline = true;
+  }catch(e){ agentOnline = false; console.warn('Coach not reachable', e); }
+  $('coachDot').classList.toggle('live', agentOnline);
+  $('coachStatus').textContent = agentOnline ? 'Coach connected (ADK agent)' : 'Coach offline: example coaching';
+  $('offlineBanner').classList.toggle('show', !agentOnline);
+}
+async function askAgent(text){
+  if(!agentOnline) throw new Error('offline');
+  const r = await fetch(`${AGENT_URL}/run`, { method:'POST', headers:{ 'Content-Type':'application/json' },
+    body: JSON.stringify({ app_name:APP_NAME, user_id:USER_ID, session_id:agentSessionId, new_message:{ role:'user', parts:[{ text }] } }) });
+  if(!r.ok) throw new Error('run failed ' + r.status);
+  const events = await r.json();
+  let out = '';
+  events.forEach(ev => { if(ev.content && ev.content.role === 'model' && ev.content.parts){ ev.content.parts.forEach(p => { if(p.text) out = p.text; }); } });
+  if(!out) throw new Error('empty reply');
+  return out.trim();
+}
+function parseJSON(text){
+  const clean = text.replace(/```json|```/g, '').trim();
+  const a = clean.indexOf('{'), b = clean.lastIndexOf('}');
+  return JSON.parse(clean.slice(a, b + 1));
+}
+function context(){
+  return { today: today ? { date:today.date, counts:today.counts, serves_tracked:today.total, second_serves_flagged:today.secondServes || null } : null,
+           history: history.map(h => ({ date:h.date, counts:h.counts, serves_tracked:h.total })),
+           notes: history.map(h => ({ date:h.date, notes:h.notes })).concat(today ? [{ date:today.date, notes:today.notes }] : []) };
+}
+
+/* ============ End session -> coaching card ============ */
+function countFlags(serves){
+  const c = {}; CHECKS.forEach(k => c[k] = 0);
+  serves.forEach(f => f.forEach(k => c[k]++));
+  return c;
+}
+async function endSession(){
+  if(!sessionServes.length) return;
+  const counts = countFlags(sessionServes);
+  const second = sessionServes.map((f,i) => f.length && i % 2 === 1 ? i + 1 : null).filter(Boolean);
+  today = { date:'Today', counts, total:sessionServes.length, notes:(today && today.notes) || [], secondServes: second };
+  save('sc_today', today);
+  showView('coach');
+  await buildCoachCard();
+  renderLog();
+}
+$('endBtn').addEventListener('click', endSession);
+
+const FALLBACK_CARD = {
+  praise:'Nice session. Your toss is spot on now.', headline:'Keep your front knee over your ankle',
+  fix:'When you bend before the serve, your front knee slides past your ankle, mostly on second serves.',
+  why:'You lose the push from your legs, so the serve has less power and you land off balance.',
+  phase:'Trophy position', coach_cue:'Knees bent and loaded over the feet, racket up behind the head, side-on to the net.',
+  drill_name:'Knee bend pause', drill_how:'At the loading phase, pause for 1 second with your front knee bent over the ankle, not past it, then serve.', drill_dose:'2 sets of 8',
+  going_well:'Your toss is high and in the same spot every time.', keep_an_eye_on:'Your shoulder turn shrinks a little when you get tired.',
+  speak:'Nice session. Your toss is spot on now. Next time, keep your front knee over your ankle when you bend. Try the knee bend pause, two sets of eight.'
+};
+let card = null, currentPhase = 'trophy';
+
+async function buildCoachCard(){
+  $('coachEmpty').hidden = true; $('coachCard').hidden = true; $('coachLoading').hidden = false;
+  try{ card = parseJSON(await askAgent('COACH_CARD\n' + JSON.stringify(context()))); }
+  catch(e){ console.warn(e); card = FALLBACK_CARD; }
+  $('cPraise').textContent = card.praise || '';
+  $('cHeadline').textContent = card.headline || '';
+  $('cFix').textContent = card.fix || '';
+  $('cWhy').textContent = card.why || '';
+  $('dName').textContent = card.drill_name || ''; $('dHow').textContent = card.drill_how || ''; $('dDose').textContent = card.drill_dose || '';
+  currentPhase = /toss/i.test(card.phase || '') ? 'toss' : 'trophy';
+  renderPhase();
+  $('coachAnswer').innerHTML = '';
+  $('coachLoading').hidden = true; $('coachCard').hidden = false;
+}
+$('hearBtn').addEventListener('click', () => card && say(card.speak || (card.praise + ' ' + card.headline)));
+
+/* Serve breakdown by phase */
+const PHASES = {
+  toss:{ img:'pair_toss.jpg', checks:['toss_height_ratio','toss_drift_cm'], cue:'Tossing arm straight and high, ball released slightly in front, eyes on the ball.' },
+  trophy:{ img:'pair_trophy.jpg', checks:['shoulder_turn_deg','front_knee_offset_cm'], cue:'Knees bent and loaded over the feet, racket up behind the head, side-on to the net.' },
+  follow:{ img:'pair_follow.jpg', checks:[], cue:'Lands on the front foot inside the baseline, racket finishing across the body, balanced.' }
+};
+function renderPhase(){
+  const p = PHASES[currentPhase];
+  document.querySelectorAll('[data-phase]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.phase === currentPhase)));
+  $('phaseImg').src = p.img;
+  const st = $('phaseStatus'), you = $('phaseYou');
+  const isFocus = card && ((/toss/i.test(card.phase) && currentPhase === 'toss') || (/trophy/i.test(card.phase) && currentPhase === 'trophy'));
+  if(!p.checks.length){ st.className = 'status none'; st.textContent = 'Not measured yet'; you.textContent = 'Compare your landing with your coach’s.'; }
+  else {
+    const n = today ? p.checks.reduce((s,k) => s + today.counts[k], 0) : 0;
+    if(isFocus){ st.className = 'status fix'; st.textContent = 'Fix next'; you.textContent = card.headline; }
+    else if(n === 0){ st.className = 'status good'; st.textContent = 'Going well'; you.textContent = currentPhase === 'toss' ? 'Your toss matched your best serves today.' : 'Your trophy position matched your best serves today.'; }
+    else { st.className = 'status none'; st.textContent = 'Keep an eye on'; you.textContent = card ? card.keep_an_eye_on : ''; }
+  }
+  $('phaseCue').textContent = isFocus && card.coach_cue ? card.coach_cue : p.cue;
+  const trend = $('phaseTrend'); trend.innerHTML = '';
+  if(!p.checks.length){ trend.innerHTML = '<p class="muted">The tracker doesn’t measure follow-through yet, so compare by eye for now. Landing balance is planned for v2.</p>'; return; }
+  const sessions = history.concat(today ? [today] : []);
+  p.checks.forEach(k => {
+    const box = document.createElement('div'); box.className = 'trend-card';
+    const bars = sessions.map((s,i) => { const v = s.counts[k] || 0; const col = v === 0 ? '#6f8f5e' : (i === sessions.length - 1 ? '#e07a45' : '#b8875f'); return `<div class="bar"><span>${v}</span><i style="height:${Math.max(3, v*7)}px;background:${col}"></i></div>`; }).join('');
+    const labels = sessions.map(s => `<span>${s.date}</span>`).join('');
+    box.innerHTML = `<strong>${CHECK_NAMES[k]}</strong> <span class="muted">· serves flagged</span><div class="bars" role="img" aria-label="${CHECK_NAMES[k]} serves flagged per session">${bars}</div><div class="bar-labels">${labels}</div>`;
+    trend.appendChild(box);
+  });
+}
+document.querySelectorAll('[data-phase]').forEach(b => b.addEventListener('click', () => { currentPhase = b.dataset.phase; renderPhase(); }));
+
+/* Ask your coach */
+async function ask(question, target){
+  const box = $(target);
+  box.innerHTML = '<p class="loading">Your coach is thinking…</p>';
+  let reply;
+  try{ reply = await askAgent('QUESTION\n' + JSON.stringify(context()) + '\nQuestion: ' + question); }
+  catch(e){ reply = 'Your coach is offline right now. Start the agent and refresh to ask questions.'; }
+  box.innerHTML = '';
+  const div = document.createElement('div'); div.className = 'answer';
+  const who = document.createElement('div'); who.className = 'who'; who.textContent = 'Your coach';
+  const p = document.createElement('p'); p.textContent = reply;
+  div.appendChild(who); div.appendChild(p); box.appendChild(div);
+}
+$('askBtn').addEventListener('click', () => { const q = $('askInput').value.trim(); if(q){ ask(q, 'coachAnswer'); $('askInput').value = ''; } });
+$('askInput').addEventListener('keydown', (e) => { if(e.key === 'Enter') $('askBtn').click(); });
+document.querySelectorAll('[data-ask]').forEach(b => b.addEventListener('click', () => ask(b.dataset.ask, 'coachAnswer')));
+document.querySelectorAll('[data-logask]').forEach(b => b.addEventListener('click', () => ask(b.dataset.logask, 'logAnswer')));
+
+/* ============ Log ============ */
+function plain(counts){
+  const words = { toss_height_ratio:'toss height varied', toss_drift_cm:'toss drifted forward', shoulder_turn_deg:'shoulder turn dropped', front_knee_offset_cm:'front knee slid past the ankle' };
+  const parts = CHECKS.filter(k => counts[k] > 0).sort((a,b) => counts[b] - counts[a]).map(k => {
+    const n = counts[k]; const freq = n >= 5 ? 'on most serves' : (n >= 3 ? 'on several serves' : 'now and then'); return `${words[k]} ${freq}`;
+  });
+  if(!parts.length) return 'Clean session: everything matched your best serves.';
+  const s = parts.join('; '); return s.charAt(0).toUpperCase() + s.slice(1) + '.';
+}
+function renderLog(){
+  const list = $('sessionList'); list.innerHTML = '';
+  history.concat(today ? [today] : []).forEach(s => {
+    const d = document.createElement('div'); d.className = 'session';
+    const t = document.createElement('strong'); t.textContent = s.date; d.appendChild(t);
+    const p = document.createElement('p'); p.textContent = plain(s.counts); d.appendChild(p);
+    (s.notes || []).forEach(n => { const q = document.createElement('p'); q.className = 'note'; q.textContent = 'Note: ' + n; d.appendChild(q); });
+    list.appendChild(d);
+  });
+  const btns = $('compareBtns'); btns.innerHTML = '';
+  if(!today){ $('compareOut').innerHTML = '<p class="muted">Finish a session to compare it with earlier ones.</p>'; return; }
+  const opts = [{ label:'Last session · ' + history[history.length - 1].date, idx:history.length - 1 }, { label:'First session · ' + history[0].date, idx:0 }];
+  opts.forEach(o => { const b = document.createElement('button'); b.className = 'chip'; b.textContent = o.label; b.setAttribute('aria-pressed','false');
+    b.addEventListener('click', () => { btns.querySelectorAll('button').forEach(x => x.setAttribute('aria-pressed','false')); b.setAttribute('aria-pressed','true'); compare(o.idx); });
+    btns.appendChild(b); });
+}
+async function compare(idx){
+  const out = $('compareOut'); out.innerHTML = '<p class="loading">Your coach is comparing…</p>';
+  const other = history[idx];
+  let res;
+  try{ res = parseJSON(await askAgent('COMPARE\n' + JSON.stringify({ today:{ date:today.date, counts:today.counts }, other:{ date:other.date, counts:other.counts }, notes:context().notes }))); }
+  catch(e){ res = { improved:'Your toss no longer drifts forward.', same:'Your shoulder turn still dips now and then.', next:'Keep your front knee over your ankle when you bend.' }; }
+  out.innerHTML = '';
+  [['Improved', res.improved], ['Still the same', res.same], ['Focus next', res.next]].forEach(([k,v]) => { const p = document.createElement('p'); p.className = 'lead'; const b = document.createElement('strong'); b.textContent = k + ': '; p.appendChild(b); p.appendChild(document.createTextNode(v || '')); out.appendChild(p); });
+}
+$('noteBtn').addEventListener('click', () => {
+  const n = $('noteInput').value.trim(); if(!n) return;
+  if(!today){ today = { date:'Today', counts:countFlags([]), total:0, notes:[] }; }
+  today.notes = (today.notes || []).concat([n]); save('sc_today', today);
+  $('noteInput').value = ''; renderLog();
 });
+
+/* ============ Tabs ============ */
+function showView(v){
+  ['live','coach','log'].forEach(x => { $('view-' + x).hidden = x !== v; $('tab-' + x).setAttribute('aria-selected', String(x === v)); });
+}
+document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', () => showView(t.dataset.view)));
+
+checkAgent();
+renderLog();
 </script>
-
 </body>
 </html>
