@@ -15,7 +15,7 @@
  */
 
 import { KEYS, prefs } from './store.js';
-import { startCamera, stopCamera, isCameraActive } from './camera.js';
+import { startCamera, stopCamera, isCameraActive, isMobileDevice } from './camera.js';
 import { loadMoveNet, startPoseLoop, stopPoseLoop } from './pose.js';
 import { SkeletonOverlay, MIN_DRAW_SCORE } from './overlay.js';
 import { initDebug } from './debug.js';
@@ -180,8 +180,8 @@ async function startPreview() {
     setCamStatus(res.message, 'error', true);
     return;
   }
-  debug.note('camera on ' + res.info.videoWidth + 'x' + res.info.videoHeight + ' facing=' + res.info.facingMode);
-  const frontOnly = res.info.facingMode === 'user';
+  debug.note('camera on ' + res.info.videoWidth + 'x' + res.info.videoHeight + ' facing=' + res.info.facingMode + ' (' + res.info.request + ')');
+  const frontOnly = isMobileDevice() && res.info.facingMode === 'user'; // desktops only have a front camera: nothing to explain
   setCamStatus('Loading body tracking…');
   try {
     await loadMoveNet();

@@ -21,6 +21,8 @@ let backendInfo = { name: '', reason: '', float32: null };
 
 let loopId = 0;   // increments on every start/stop so stale loops exit
 let running = false;
+let paused = false;     // set while the debug model check borrows the detector
+let inflight = null;    // the estimate currently running, so a check can wait for it
 const stats = { fps: 0, frames: 0, lastError: '' };
 
 export function getPoseInfo() {
@@ -94,14 +96,17 @@ export function startPoseLoop(videoEl, onPoses) {
   async function tick() {
     if (id !== loopId) return;
     const playing = videoEl.readyState >= 2 && !videoEl.paused && videoEl.videoWidth > 0;
-    if (playing) {
+    if (playing && !paused) {
       try {
-        const poses = await detector.estimatePoses(videoEl);
+        inflight = detector.estimatePoses(videoEl);
+        const poses = await inflight;
+        inflight = null;
         if (id !== loopId) return; // stopped while estimating
         stats.frames++;
         windowFrames++;
         onPoses(poses);
       } catch (error) {
+        inflight = null;
         stats.lastError = String(error && error.message || error);
       }
     }
@@ -120,4 +125,115 @@ export function stopPoseLoop() {
   loopId++;
   running = false;
   stats.fps = 0;
+}
+
+/* ---------------------------------------------------------------------------------------
+ * Model check (debug only). Answers: is the model getting a good picture, and does it find
+ * a body in it? Runs on the current frame with the live loop paused:
+ *   1. "Screen frame": the frame drawn by the browser onto a 2D canvas (what you see).
+ *   2. "Model input": what TensorFlow reads from the video element (what the model sees).
+ *   3. The model's raw output (no 25 % cut-off) on (a) the video element and (b) a plain
+ *      2D-canvas copy of the same frame.
+ * If (1) looks right but (2) is blank or garbled, the camera-to-GPU upload is broken on this
+ * device. If both look right but scores are low, the problem is in the model's maths on this
+ * GPU (compare with ?backend=wasm). If scores are good here, the live loop is at fault.
+ * --------------------------------------------------------------------------------------- */
+
+function gpuName() {
+  try {
+    const gl = document.createElement('canvas').getContext('webgl');
+    const ext = gl && gl.getExtension('WEBGL_debug_renderer_info');
+    return ext ? gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) : (gl ? gl.getParameter(gl.RENDERER) : 'no WebGL');
+  } catch (e) { return 'unknown'; }
+}
+
+function lumaStats(rgba) {
+  let n = 0, sum = 0, sum2 = 0;
+  for (let i = 0; i < rgba.length; i += 4) {
+    const y = 0.299 * rgba[i] + 0.587 * rgba[i + 1] + 0.114 * rgba[i + 2];
+    sum += y; sum2 += y * y; n++;
+  }
+  const mean = sum / n;
+  return { mean: +mean.toFixed(1), std: +Math.sqrt(Math.max(0, sum2 / n - mean * mean)).toFixed(1) };
+}
+
+function summarise(poses) {
+  const p = poses && poses[0];
+  if (!p) return { poseScore: null, maxKeypointScore: null, above03: 0, keypoints: [] };
+  return {
+    poseScore: +(p.score || 0).toFixed(3),
+    maxKeypointScore: +Math.max(...p.keypoints.map((k) => k.score)).toFixed(3),
+    above03: p.keypoints.filter((k) => k.score >= 0.3).length,
+    keypoints: p.keypoints.map((k) => [k.name, +k.score.toFixed(2), Math.round(k.x), Math.round(k.y)]),
+  };
+}
+
+export async function runModelCheck(videoEl) {
+  if (!detector) throw new Error('Model not loaded yet');
+  if (!videoEl.videoWidth) throw new Error('Camera not running');
+  paused = true;
+  try {
+    if (inflight) await inflight.catch(() => {});
+    const vw = videoEl.videoWidth, vh = videoEl.videoHeight;
+    const W = 96, H = Math.max(1, Math.round(96 * vh / vw));
+    const out = { backend: tf.getBackend(), gpu: gpuName(), video: vw + 'x' + vh };
+
+    // 1. Screen frame via 2D canvas
+    const full = document.createElement('canvas');
+    full.width = vw; full.height = vh;
+    full.getContext('2d').drawImage(videoEl, 0, 0, vw, vh);
+    const small = document.createElement('canvas');
+    small.width = W; small.height = H;
+    const sctx = small.getContext('2d');
+    sctx.drawImage(full, 0, 0, W, H);
+    const screenPx = sctx.getImageData(0, 0, W, H).data;
+    out.screenFrame = { ...lumaStats(screenPx), thumb: small.toDataURL('image/jpeg', 0.7) };
+
+    // 2. Model input: what TensorFlow reads from the video element
+    const t = tf.browser.fromPixels(videoEl);
+    out.modelInputShape = t.shape.join('x');
+    // tf-core alone has no chained tensor methods, so use the functional ops
+    const thumbT = tf.tidy(() => tf.cast(tf.clipByValue(tf.image.resizeBilinear(t, [H, W]), 0, 255), 'int32'));
+    t.dispose();
+    const tc = document.createElement('canvas');
+    tc.width = W; tc.height = H;
+    await tf.browser.toPixels(thumbT, tc);
+    thumbT.dispose();
+    const modelPx = tc.getContext('2d').getImageData(0, 0, W, H).data;
+    let diff = 0;
+    for (let i = 0; i < modelPx.length; i += 4) diff += Math.abs(modelPx[i] - screenPx[i]) + Math.abs(modelPx[i + 1] - screenPx[i + 1]) + Math.abs(modelPx[i + 2] - screenPx[i + 2]);
+    out.modelInput = { ...lumaStats(modelPx), differenceFromScreen: +(diff / (W * H * 3)).toFixed(1), thumb: tc.toDataURL('image/jpeg', 0.7) };
+
+    // 3. Raw model output on the video element and on the 2D copy (cut-off disabled)
+    const saved = detector.minPoseScore;
+    // MoveNet's pose score is the mean of keypoints above 0.2, or 0 if none: a negative cut-off returns every result
+    detector.minPoseScore = -1;
+    try {
+      detector.reset();
+      const t0 = performance.now();
+      out.fromVideo = summarise(await detector.estimatePoses(videoEl));
+      out.fromVideo.ms = Math.round(performance.now() - t0);
+      detector.reset();
+      out.fromCanvasCopy = summarise(await detector.estimatePoses(full));
+    } finally {
+      detector.minPoseScore = saved;
+      detector.reset();
+    }
+
+    // Plain-English reading of the numbers
+    const blank = out.modelInput.std < 4;
+    const mismatch = out.modelInput.differenceFromScreen > 30;
+    out.modelInputShape += ' (height x width x colours)';
+    const v = out.fromVideo.poseScore || 0, c = out.fromCanvasCopy.poseScore || 0;
+    out.verdict =
+      out.screenFrame.std < 4 ? 'The camera picture itself is blank or uniform: check lighting / lens.' :
+      blank ? 'Model input is BLANK although the screen shows a picture: camera-to-GPU upload is broken on this device.' :
+      mismatch ? 'Model input does NOT match the screen: camera-to-GPU upload is corrupted on this device.' :
+      (c >= 0.25 && v < 0.25) ? 'Model finds the body in a canvas copy but not in the video: video upload path is the problem.' :
+      (v < 0.25 && c < 0.25) ? 'Model gets a correct picture but finds no body: model maths on this backend, or the player is not in frame. Repeat with ?backend=wasm.' :
+      'Model finds the body on this frame. If the live view still fails, the live loop is at fault.';
+    return out;
+  } finally {
+    paused = false;
+  }
 }

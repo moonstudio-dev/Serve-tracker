@@ -274,7 +274,14 @@ svg{display:block}
 #debugPanel .dbg-bar{display:flex;gap:8px;align-items:center;position:sticky;top:0;background:inherit}
 #debugPanel button{font:inherit;padding:4px 10px;border-radius:6px;border:1px solid #6b8;background:#132;color:#D7FFE9}
 #debugPanel pre{margin:4px 0 0;white-space:pre-wrap;word-break:break-all}
-#debugPanel.min pre{display:none}
+#debugPanel.min pre,#debugPanel.min .dbg-check{display:none}
+#debugPanel .dbg-bar{flex-wrap:wrap}
+.dbg-check{margin:6px 0;padding:6px;border:1px solid #6b8;border-radius:6px}
+.dbg-thumbs{display:flex;gap:8px}
+.dbg-thumbs figure{margin:0;flex:1}
+.dbg-thumbs img{width:100%;display:block;border:1px solid #6b8}
+.dbg-thumbs figcaption{font-size:10px}
+.dbg-check p{margin:6px 0 0}
 .screen>*,.block>*{min-width:0} /* let grid children shrink to the screen width */
 .notice b{display:block}
 </style>

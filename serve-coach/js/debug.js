@@ -9,7 +9,7 @@
  */
 
 import { getInfo } from './camera.js';
-import { getPoseInfo } from './pose.js';
+import { getPoseInfo, runModelCheck } from './pose.js';
 
 const NAMES = ['nose', 'l_eye', 'r_eye', 'l_ear', 'r_ear', 'l_shoulder', 'r_shoulder', 'l_elbow', 'r_elbow',
   'l_wrist', 'r_wrist', 'l_hip', 'r_hip', 'l_knee', 'r_knee', 'l_ankle', 'r_ankle'];
@@ -24,9 +24,11 @@ export function initDebug({ video, canvas, overlay, minScore }) {
   const panel = document.createElement('div');
   panel.id = 'debugPanel';
   panel.setAttribute('aria-hidden', 'true');
-  panel.innerHTML = '<div class="dbg-bar"><b>Debug</b><button type="button" data-a="copy">Copy</button><button type="button" data-a="hide">Hide</button></div><pre></pre>';
+  panel.innerHTML = '<div class="dbg-bar"><b>Debug</b><button type="button" data-a="check">Model check</button><button type="button" data-a="copy">Copy</button><button type="button" data-a="hide">Hide</button></div><div class="dbg-check" hidden></div><pre></pre>';
   document.body.appendChild(panel);
   const pre = panel.querySelector('pre');
+  const checkBox = panel.querySelector('.dbg-check');
+  let lastCheck = null;
   let lastPose = null;
   const events = [];
 
@@ -65,6 +67,7 @@ export function initDebug({ video, canvas, overlay, minScore }) {
         keypointsAboveThreshold: kps.filter((k) => k.score >= minScore).length + '/17 (threshold ' + minScore + ')',
       },
       keypoints: kps,
+      modelCheck: lastCheck,
       events: events.slice(-10),
     };
   }
@@ -89,6 +92,34 @@ export function initDebug({ video, canvas, overlay, minScore }) {
   panel.addEventListener('click', async (e) => {
     const a = e.target.dataset.a;
     if (a === 'hide') { panel.classList.toggle('min'); e.target.textContent = panel.classList.contains('min') ? 'Show' : 'Hide'; }
+    if (a === 'check') {
+      e.target.textContent = 'Checking…';
+      checkBox.hidden = false;
+      checkBox.textContent = 'Running model check on the current frame… stand in full view.';
+      try {
+        const r = await runModelCheck(video);
+        lastCheck = r;
+        checkBox.innerHTML = '';
+        const row = document.createElement('div');
+        row.className = 'dbg-thumbs';
+        [['Screen frame', r.screenFrame], ['Model input', r.modelInput]].forEach(([label, d]) => {
+          const f = document.createElement('figure');
+          const img = new Image(); img.src = d.thumb; img.alt = label;
+          const cap = document.createElement('figcaption');
+          cap.textContent = `${label} · mean ${d.mean} · std ${d.std}` + (d.differenceFromScreen != null ? ` · diff ${d.differenceFromScreen}` : '');
+          f.append(img, cap); row.appendChild(f);
+        });
+        const txt = document.createElement('p');
+        txt.textContent = `${r.verdict}  |  backend ${r.backend} · GPU ${r.gpu} · video ${r.video} · input ${r.modelInputShape}  |  ` +
+          `from video: score ${r.fromVideo.poseScore}, max kp ${r.fromVideo.maxKeypointScore}, ${r.fromVideo.above03}/17 ≥0.3, ${r.fromVideo.ms} ms  |  ` +
+          `from canvas copy: score ${r.fromCanvasCopy.poseScore}, max kp ${r.fromCanvasCopy.maxKeypointScore}, ${r.fromCanvasCopy.above03}/17 ≥0.3`;
+        checkBox.append(row, txt);
+        note('model check: ' + r.verdict);
+      } catch (err) {
+        checkBox.textContent = 'Model check failed: ' + err.message;
+      }
+      e.target.textContent = 'Model check';
+    }
     if (a === 'copy') {
       const text = JSON.stringify(snapshot(), null, 1);
       try { await navigator.clipboard.writeText(text); e.target.textContent = 'Copied'; }
@@ -96,11 +127,12 @@ export function initDebug({ video, canvas, overlay, minScore }) {
       setTimeout(() => { e.target.textContent = 'Copy'; }, 1500);
     }
   });
+  function note(text) { events.push(new Date().toLocaleTimeString() + ' ' + text); }
   setInterval(render, 500);
   render();
 
   return {
     onPoses(poses) { lastPose = poses && poses[0] ? poses[0] : null; },
-    note(text) { events.push(new Date().toLocaleTimeString() + ' ' + text); },
+    note,
   };
 }

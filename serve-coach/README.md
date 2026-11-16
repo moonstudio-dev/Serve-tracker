@@ -111,3 +111,21 @@ Tested in headless Chrome at phone size (390 × 844) with a simulated camera. No
 | Performance acceptable on real phones | **Not tested** (FPS shown in debug panel) |
 
 Stage 1 is not complete until both phones are tested.
+
+### Round 2 phone test (16 Nov, 21:28) and investigation
+| Device | Camera | Skeleton |
+|---|---|---|
+| Desktop Chrome | front | full skeleton visible |
+| iPhone Safari | **front (should be rear)** | full skeleton visible |
+| Android Chrome (Android 10) | rear | **one dot near the centre, no lines, doesn't follow the body** |
+
+**Issue 1: iPhone opened the front camera.** The app *preferred* the rear camera and also *preferred* a portrait size. Safari weighs all preferences together and picked the front camera as the better overall match. Fix: on every device, first *require* the rear camera; if none exists (desktop), fall back to preferring it, then to any camera. Permission refusals are not retried. Tested with simulated phone/desktop/refused cameras.
+
+**Issue 2: Android tracking. What the data shows.**
+- Camera 1280×720 landscape, rear, 30 fps; preview 204×375; mapping scale 0.52, visible video x 444–836. These values are correct: the overlay is not the cause.
+- The loop is running: 332 frames processed at 10 fps, no errors.
+- MoveNet returned **no pose on any frame** (0 keypoints). In pose-detection 2.1.3 an empty result means the pose score was below 0.25, where the score is the mean of keypoints above 0.2 (0 if none). So on this phone the model is not finding a body in what it receives. There is nothing for the overlay to draw.
+- The same symptom was present in Stage 0 (640×480), so it is not caused by the Stage 1 changes.
+- Not yet known: is the model receiving a broken picture (camera-to-GPU upload on this device), or a correct picture that it can't read (GPU maths on this backend)? The same code works on iPhone and desktop.
+
+**Diagnostic added: debug panel → "Model check".** It pauses the loop and on the current frame shows the screen frame and the model's actual input side by side (brightness, contrast, difference), the GPU name, and the model's raw scores (no cut-off) on the video and on a 2D-canvas copy, with a plain-English verdict. Repeating it with `&backend=wasm` separates a GPU problem from a picture problem. The fix will be chosen from this result.

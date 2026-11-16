@@ -2,9 +2,12 @@
  * camera.js — camera permission and stream lifecycle.
  *
  * - One stream at a time: startCamera() reuses a live stream instead of opening another.
- * - Rear camera by default (facingMode "environment"), never mirrored.
- *   If no rear camera is available, the browser falls back to another camera
- *   and we report it, so the UI can explain.
+ * - Rear camera by default, never mirrored. We first REQUIRE the rear camera
+ *   (facingMode exact "environment"). Asking only for a *preferred* rear camera is not enough:
+ *   Safari weighs all preferred settings together and can pick the front camera because it
+ *   matches the requested size better (seen on iPhone, 16 Nov). If no rear camera exists
+ *   (desktop, some tablets), we fall back to a preferred rear camera, then to any camera,
+ *   and report which one we got so the UI can explain.
  * - Asks for a portrait-shaped picture when the screen is portrait. Some browsers honour
  *   this (iPhone Safari), others return landscape (often Android Chrome). We never assume:
  *   callers must read the real size from the video element / getInfo().
@@ -20,16 +23,25 @@ function isPortraitScreen() {
   return window.matchMedia ? window.matchMedia('(orientation: portrait)').matches : window.innerHeight >= window.innerWidth;
 }
 
-function constraints() {
+function size() {
   const portrait = isPortraitScreen();
-  return {
-    audio: false,
-    video: {
-      facingMode: { ideal: 'environment' },
-      width: { ideal: portrait ? 720 : 1280 },
-      height: { ideal: portrait ? 1280 : 720 },
-    },
-  };
+  return { width: { ideal: portrait ? 720 : 1280 }, height: { ideal: portrait ? 1280 : 720 } };
+}
+
+/** Attempts in order. Each is tried only if the previous one can't be satisfied. */
+function attempts() {
+  return [
+    { audio: false, video: { facingMode: { exact: 'environment' }, ...size() } },
+    { audio: false, video: { facingMode: { ideal: 'environment' }, ...size() } },
+    { audio: false, video: true },
+  ];
+}
+
+/** Phone or tablet (used only to decide whether a front camera needs explaining). */
+export function isMobileDevice() {
+  return (navigator.userAgentData && navigator.userAgentData.mobile) ||
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent)); // iPadOS reports as Mac
 }
 
 const MESSAGES = {
@@ -45,15 +57,21 @@ export function isCameraActive() {
   return !!stream && stream.getVideoTracks().some((t) => t.readyState === 'live');
 }
 
+let lastAttempt = '';
+
 async function openStream() {
-  try {
-    return await navigator.mediaDevices.getUserMedia(constraints());
-  } catch (error) {
-    // Very old or unusual devices can reject the size request: retry with any camera.
-    if (error && error.name === 'OverconstrainedError') {
-      return navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+  const list = attempts();
+  for (let i = 0; i < list.length; i++) {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia(list[i]);
+      lastAttempt = ['rear camera required', 'rear camera preferred', 'any camera'][i];
+      return s;
+    } catch (error) {
+      // Only "this camera/setting doesn't exist" moves on to the next attempt.
+      // Permission refusals and busy cameras are reported straight away.
+      const retryable = error && (error.name === 'OverconstrainedError' || error.name === 'NotFoundError');
+      if (!retryable || i === list.length - 1) throw error;
     }
-    throw error;
   }
 }
 
@@ -106,6 +124,7 @@ export function getInfo(videoEl) {
   return {
     active: isCameraActive(),
     label: track ? track.label : '',
+    request: lastAttempt,
     facingMode: s.facingMode || 'unknown',  // Safari and Chrome on phones report this; desktops often don't
     trackWidth: s.width || 0,
     trackHeight: s.height || 0,
