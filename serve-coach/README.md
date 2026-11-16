@@ -144,3 +144,6 @@ Model check on the Android phone (Android 10, Chrome 157, **ARM Mali-G610 MC4**)
 - Speed: ~10 fps on this phone on WASM (same as its WebGL rate). Enough for setup and preview; serve detection (Stage 6) will likely need more. Options later: feed the model a smaller copy of the frame, or enable multi-threaded WASM.
 - The rule is based on one confirmed Mali device. Mali is common (many Samsung, MediaTek and Google Pixel phones), so all Mali GPUs are routed to WASM until a WebGL fix is proven. A start-up self-test on a reference image would make this automatic for any GPU; deferred.
 - Legs scored lower than the upper body (knees/ankles 0.04–0.44) in this test; Stage 2's readiness check must require them before practice starts.
+
+### Release versions and phone caching
+GitHub Pages lets browsers reuse files for up to 10 minutes, so a phone can run an older copy of a module after a deploy (seen on Android, 16 Nov 21:51: the Mali fix was live but the phone ran the cached pose.js). Each release now has a version (`tools/set-version.py <version>`), stamped into every module URL through an import map, so a release loads as one consistent set. The debug panel's first line shows the running version. After a deploy, wait a few minutes and reload; check the version before testing.

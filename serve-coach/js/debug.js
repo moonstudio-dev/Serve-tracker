@@ -45,6 +45,7 @@ export function initDebug({ video, canvas, overlay, minScore }) {
       inView: m ? (k.x >= visible.x0 && k.x <= visible.x1 && k.y >= visible.y0 && k.y <= visible.y1) : null,
     })) : [];
     return {
+      appVersion: document.documentElement.dataset.version || 'unknown',
       time: new Date().toISOString(),
       userAgent: navigator.userAgent,
       screen: {
@@ -76,6 +77,7 @@ export function initDebug({ video, canvas, overlay, minScore }) {
     const s = snapshot();
     const t = s.tracking;
     const lines = [
+      `app     v${s.appVersion}`,
       `camera  ${s.camera.active ? 'ON' : 'off'}  facing=${s.camera.facingMode}  track=${s.camera.trackWidth}x${s.camera.trackHeight}  video=${s.camera.videoWidth}x${s.camera.videoHeight} (${s.camera.videoShape})`,
       `screen  ${s.screen.viewport} dpr=${s.screen.dpr} ${s.screen.orientation}`,
       `display video=${s.display.video} canvas=${s.display.canvasCss} bitmap=${s.display.canvasBitmap} fit=${s.display.objectFit}`,
