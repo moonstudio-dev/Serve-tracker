@@ -147,3 +147,24 @@ Model check on the Android phone (Android 10, Chrome 157, **ARM Mali-G610 MC4**)
 
 ### Release versions and phone caching
 GitHub Pages lets browsers reuse files for up to 10 minutes, so a phone can run an older copy of a module after a deploy (seen on Android, 16 Nov 21:51: the Mali fix was live but the phone ran the cached pose.js). Each release now has a version (`tools/set-version.py <version>`), stamped into every module URL through an import map, so a release loads as one consistent set. The debug panel's first line shows the running version. After a deploy, wait a few minutes and reload; check the version before testing.
+
+### Stage 1 phone results (16 Nov, v1.1.2–1.1.3)
+| Device | Camera | Backend | FPS | Keypoints ≥ 0.3 | Result |
+|---|---|---|---|---|---|
+| Desktop Chrome | front | WebGL | – | full skeleton | Passed (PM test) |
+| iPhone Safari (iOS 18.7) | rear, "Back Dual Wide Camera" (required, first attempt) | WebGL, Apple GPU | 19 | 14/17 | Passed (v1.1.2) |
+| Android Chrome 157 (Android 10, Mali-G610) | rear, "camera 0, facing back" | WASM (chosen automatically: Mali) | 8 | 14/17 | Passed (v1.1.3) |
+
+Notes from the data:
+- Both phones deliver a landscape 1280×720 frame even when asked for portrait; the preview shows the middle ~31 % (video x 444–836). Players must stand in that narrow strip; Stage 2's readiness check should use the visible area, not the whole frame.
+- Legs were weak on both phones (ankles 0.04–0.23) and in the Android test the hips were at the bottom edge of the frame (y≈705–716 of 720), so the legs were likely out of shot. Full-body tracking at the intended 3–5 m distance is still to be confirmed.
+- Android runs at 8–10 fps on WASM: fine for setup; likely too slow for serve detection (Stage 6).
+
+| Stage 1 acceptance | Status |
+|---|---|
+| Desktop Chrome: front camera + full skeleton | Passed |
+| iPhone Safari: rear camera + full skeleton | Passed |
+| Android Chrome: rear camera + skeleton follows the body | Passed |
+| Dots and lines aligned around the frame | Passed (phones, upper body; automated mapping test incl. edges) |
+| Full body tracked at 3–5 m, feet in frame | Not yet confirmed on phones |
+| Camera stops when leaving the camera screen | Passed (automated); not yet confirmed on phones |
