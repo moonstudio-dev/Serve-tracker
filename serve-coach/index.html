@@ -266,6 +266,15 @@ svg{display:block}
 .sub-h{font-size:1.75rem}
 .compare h3{font-size:1.75rem}
 .block{display:grid;gap:14px;min-width:0}
+.cam-msg{display:grid;gap:8px;justify-items:center;text-align:center}
+.cam-status{margin:0;font-size:.95rem;color:var(--muted)}
+.cam-status[data-kind=error]{color:var(--warn);font-weight:700}
+.cam-status[data-kind=warn]{color:var(--ink);background:var(--ball-soft);padding:8px 12px;border-radius:var(--r-md)}
+#debugPanel{position:fixed;top:0;left:0;right:0;z-index:1000;background:rgba(5,10,20,.88);color:#D7FFE9;font:11px/1.35 ui-monospace,Menlo,Consolas,monospace;max-height:46vh;overflow:auto;padding:6px 8px}
+#debugPanel .dbg-bar{display:flex;gap:8px;align-items:center;position:sticky;top:0;background:inherit}
+#debugPanel button{font:inherit;padding:4px 10px;border-radius:6px;border:1px solid #6b8;background:#132;color:#D7FFE9}
+#debugPanel pre{margin:4px 0 0;white-space:pre-wrap;word-break:break-all}
+#debugPanel.min pre{display:none}
 .screen>*,.block>*{min-width:0} /* let grid children shrink to the screen width */
 .notice b{display:block}
 </style>
@@ -378,6 +387,7 @@ svg{display:block}
       <video id="cameraPreview" autoplay playsinline muted></video>
       <canvas id="skeletonCanvas"></canvas>
     </div>
+    <div class="cam-msg"><p class="cam-status" id="camStatus" role="status" hidden></p><button class="btn btn-quiet" type="button" id="camRetry" hidden>Try again</button></div>
     <ul class="checks" id="checks">
       <li data-k="body"><span class="ic">1</span><div><b>I can see all of you</b><span>Head to feet, with your feet in the lower box.</span></div></li>
       <li data-k="toss"><span class="ic">2</span><div><b>There’s room above your toss</b><span>The top box stays empty when you reach up.</span></div></li>

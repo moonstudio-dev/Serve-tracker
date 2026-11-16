@@ -18,6 +18,7 @@ serve-coach/
     camera.js           camera permission and stream lifecycle
     pose.js             TensorFlow.js + MoveNet, frame loop
     overlay.js          skeleton drawing, video-to-canvas mapping
+    debug.js            hidden debug panel (?debug=1)
     store.js            LocalStorage now; IndexedDB from Stage 3/4
     tracking-quality.js placeholder: Stage 2
     session.js          placeholder: Stage 3
@@ -61,8 +62,6 @@ Changed on purpose:
 Still demo-only (kept deliberately until the real replacement works):
 | Demo behaviour | Replaced in |
 |---|---|
-| Camera opens the default (usually front) camera at 640×480; stream not stopped; alert on error | Stage 1 |
-| Keypoint dots misaligned in the portrait preview (known cause: canvas stretched vs video cropped) | Stage 1 |
 | Scripted picture checks (the "light" check always fails first time) | Stage 2 |
 | Level bubble animates to "Level" when no sensor is available | Stage 2 |
 | Countdown + "Next serve" button with scripted cues on Record | Stages 3 and 6 |
@@ -81,3 +80,34 @@ Tested in headless Chrome at phone size (390 × 844) with a simulated camera. No
 | Pinned TF.js libraries load and initialise the WebGL backend | **Passed** (packages loaded from npm in the sandbox) |
 | MoveNet model download and keypoints on screen | **Not tested**: the sandbox can't reach the model host. Check on your phone. |
 | iPhone Safari / Android Chrome | **Not tested** |
+
+## Stage 1 — camera and skeleton
+
+### Why iPhone and Android behaved differently (Stage 0 test, 16 Nov)
+- iPhone Safari: dots roughly followed the body. Android Chrome: dots stayed near the centre and only a few appeared.
+- Cause: the preview box is portrait (≈201×370). Stage 0 asked for 640×480 with no orientation. **iPhone Safari returns a portrait frame (480×640)**, which is close to the box shape, so the stretched canvas was only slightly off. **Android Chrome returns the landscape 640×480 frame**; the video is scaled ×0.77 and its sides cropped (only video x≈190–450 of 640 is visible), while the canvas was squeezed into the box at ×0.31. Every dot moved only ~40 % as far as the body, toward the centre.
+- Fewer dots on Android: Stage 0 hid any point under 0.5 confidence; MoveNet's own demos draw from 0.3.
+- Reproduced in automated tests with synthetic camera feeds (markers at known pixels): with a landscape feed, the Stage 0 mapping misses every off-centre marker; with a portrait feed it nearly hits. The new mapping hits every marker in both.
+
+### What changed
+- `overlay.js`: one shared video-to-screen mapping that reads the video's real size and `object-fit` (cover), so points get the same scale and crop as the picture. Canvas drawn at display size × device pixel ratio, resized only when sizes change. Full skeleton lines and points; draw threshold 0.3.
+- `camera.js`: rear camera by default, no mirroring; asks for a portrait-shaped picture on a portrait screen (browsers may still return landscape; the mapping handles both); one stream only; a stream that arrives after the user left is discarded; `stopCamera()` stops all tracks; plain-English errors (no `alert`).
+- `pose.js`: controlled loop (start/stop, one frame at a time, skips frames when video isn't playing, FPS); smoothing reset on restart; WebGL backend, switching to WASM (CPU) on GPUs that can't render 32-bit floats (a known cause of poor MoveNet scores). `?backend=wasm|webgl` forces one.
+- `app.js`: camera + tracking run only on setup step 4. They stop on Back/Next, on leaving the setup screen, when the page is hidden or closed. Status line under the preview ("Starting camera…", errors, front-camera fallback) with a Try again button.
+- `debug.js`: `?debug=1` panel with camera/track/video dimensions and orientation, display and canvas sizes, object-fit, mapping and the visible part of the video, backend, FPS, frames processed, pose score and every keypoint's score and position. **Copy** puts it all on the clipboard as JSON.
+
+### Stage 1 acceptance
+| Criterion | Status |
+|---|---|
+| Overlay mapping matches rendered video, landscape and portrait feeds, incl. near frame edges | **Passed** (headless Chrome, synthetic feeds) |
+| Skeleton follows the body on iPhone Safari | **Not tested** |
+| Skeleton follows the body on Android Chrome | **Not tested** |
+| Dots and lines stay aligned while moving arms and legs around the frame | **Not tested** on phones |
+| Tracking works with the full body visible, not only with hands raised | **Not tested** on phones |
+| Leaving the camera step / screen / hiding the page stops the camera | **Passed** (headless Chrome); phones not tested |
+| No duplicate streams or loops (re-entering step 4, rapid Back/Next) | **Passed** (headless Chrome) |
+| Clear permission and camera errors | **Passed** (permission denied, headless Chrome) |
+| Single model initialisation; WASM fallback loads | **Passed** (headless Chrome; model download not reachable from the test sandbox) |
+| Performance acceptable on real phones | **Not tested** (FPS shown in debug panel) |
+
+Stage 1 is not complete until both phones are tested.

@@ -4,6 +4,9 @@
  * Ported from new-app/index.html. Routes: #home, #setup, #record, #progress.
  * Old prototype links still work: #live -> #record, #log and #coach -> #progress.
  *
+ * Camera experience (Stage 1): the camera and tracking run only while setup step 4 is on
+ * screen. Leaving the step or the screen, or hiding the page, stops both.
+ *
  * Demo-only behaviour still in place (replaced in later stages, see README):
  *   - scripted picture checks in setup step 4 (Stage 2)
  *   - level bubble animation when no orientation sensor is available (Stage 2)
@@ -12,14 +15,16 @@
  */
 
 import { KEYS, prefs } from './store.js';
-import { startCamera } from './camera.js';
-import { loadMoveNet, startPoseLoop } from './pose.js';
-import { drawPoses } from './overlay.js';
+import { startCamera, stopCamera, isCameraActive } from './camera.js';
+import { loadMoveNet, startPoseLoop, stopPoseLoop } from './pose.js';
+import { SkeletonOverlay, MIN_DRAW_SCORE } from './overlay.js';
+import { initDebug } from './debug.js';
 
 const $ = (id) => document.getElementById(id);
 
 /* ---------- routing ---------- */
 const VIEWS = ['home', 'setup', 'record', 'progress'];
+let currentView = null;
 const ALIASES = { live: 'record', log: 'progress', coach: 'progress' };
 const TAB_FOR = { home: 'home', setup: 'record', record: 'record', progress: 'progress' };
 
@@ -31,6 +36,8 @@ function route() {
     h = 'setup';
     history.replaceState(null, '', '#setup');
   }
+  currentView = h;
+  if (h !== 'setup') stopPreview();
   VIEWS.forEach((v) => { $(v).hidden = v !== h; });
   const tab = TAB_FOR[h];
   document.querySelectorAll('.tab').forEach((t) => {
@@ -100,7 +107,7 @@ function showStep(n) {
   nb.disabled = n === 4 && !checksDone;
   nb.style.opacity = nb.disabled ? 0.45 : 1;
   if (n === 3) startLevel();
-  if (n === 4) startPreview();
+  if (n === 4) startPreview(); else stopPreview();
   if (n === 5) fillSummary();
   window.scrollTo(0, 0);
 }
@@ -144,15 +151,75 @@ function startLevel() {
   (function tick() { if (got) return; if (t < demo.length) { setBubble(demo[t]); t++; setTimeout(tick, 500); } })();
 }
 
-/* camera preview + MoveNet (Stage 0: moved as-is; Stage 1 fixes lifecycle and alignment) */
-function startPreview() {
-  const video = $('cameraPreview');
-  const canvas = $('skeletonCanvas');
-  startCamera(video);
-  loadMoveNet()
-    .then(() => startPoseLoop(video, (poses) => drawPoses(canvas, video, poses)))
-    .catch(() => { /* logged in pose.js */ });
+/* ---------- camera preview + MoveNet skeleton ---------- */
+const video = $('cameraPreview');
+const canvas = $('skeletonCanvas');
+const overlay = new SkeletonOverlay(canvas, video);
+const debug = initDebug({ video, canvas, overlay, minScore: MIN_DRAW_SCORE });
+let previewToken = 0;   // changes whenever the preview is started or stopped
+let previewOn = false;
+
+function setCamStatus(text, kind, retry) {
+  const el = $('camStatus');
+  el.textContent = text || '';
+  el.dataset.kind = kind || '';
+  el.hidden = !text;
+  $('camRetry').hidden = !retry;
 }
+
+async function startPreview() {
+  if (previewOn) return; // already running or starting: never open a second stream
+  previewOn = true;
+  const token = ++previewToken;
+  setCamStatus('Starting camera…');
+  const res = await startCamera(video);
+  if (token !== previewToken || res.code === 'Cancelled') return; // left while starting (camera.js discards the stream)
+  if (!res.ok) {
+    previewOn = false;
+    debug.note('camera error ' + res.code);
+    setCamStatus(res.message, 'error', true);
+    return;
+  }
+  debug.note('camera on ' + res.info.videoWidth + 'x' + res.info.videoHeight + ' facing=' + res.info.facingMode);
+  const frontOnly = res.info.facingMode === 'user';
+  setCamStatus('Loading body tracking…');
+  try {
+    await loadMoveNet();
+  } catch (e) {
+    if (token !== previewToken) return;
+    setCamStatus('Body tracking couldn’t load. Check your connection, then try again.', 'error', true);
+    debug.note('model error ' + e.message);
+    return;
+  }
+  if (token !== previewToken) return;
+  startPoseLoop(video, (poses) => {
+    const pose = poses && poses[0];
+    overlay.draw(pose ? pose.keypoints : null);
+    debug.onPoses(poses);
+  });
+  setCamStatus(frontOnly ? 'No rear camera was available, so the front camera is in use. For practice, use the rear camera on a tripod.' : '', frontOnly ? 'warn' : '');
+}
+
+function stopPreview() {
+  previewToken++;
+  if (!previewOn && !isCameraActive()) return;
+  previewOn = false;
+  stopPoseLoop();
+  stopCamera(video);
+  overlay.clear();
+  setCamStatus('');
+  debug.note('camera off');
+}
+
+function inCameraStep() {
+  return currentView === 'setup' && step === 4;
+}
+$('camRetry').addEventListener('click', () => { if (inCameraStep()) startPreview(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopPreview();
+  else if (inCameraStep()) startPreview();
+});
+window.addEventListener('pagehide', stopPreview);
 
 /* frame check demo (scripted; replaced by real checks in Stage 2) */
 $('runCheck').addEventListener('click', function () {
