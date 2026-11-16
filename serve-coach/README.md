@@ -129,3 +129,18 @@ Stage 1 is not complete until both phones are tested.
 - Not yet known: is the model receiving a broken picture (camera-to-GPU upload on this device), or a correct picture that it can't read (GPU maths on this backend)? The same code works on iPhone and desktop.
 
 **Diagnostic added: debug panel → "Model check".** It pauses the loop and on the current frame shows the screen frame and the model's actual input side by side (brightness, contrast, difference), the GPU name, and the model's raw scores (no cut-off) on the video and on a 2D-canvas copy, with a plain-English verdict. Repeating it with `&backend=wasm` separates a GPU problem from a picture problem. The fix will be chosen from this result.
+
+### Android root cause (confirmed 16 Nov, 21:42)
+Model check on the Android phone (Android 10, Chrome 157, **ARM Mali-G610 MC4**) with `?backend=wasm`:
+- Model input matched the screen (mean 115.6 vs 116, difference 12/255): the camera picture reaches the model intact.
+- Raw model output on the current frame: pose score 0.45–0.50, 13/17 keypoints ≥ 0.3. Live loop: 15/17 keypoints, skeleton follows the body.
+- Same phone on WebGL (default): no pose in 332 frames.
+
+**Cause:** MoveNet running on TensorFlow.js's WebGL (GPU) backend produces unusable output on this Mali GPU, although the GPU reports full 32-bit float support. Camera, frame upload, coordinate mapping and drawing are not at fault.
+
+**Fix:** Mali GPUs now use the WASM (CPU) backend automatically; other GPUs keep WebGL (working on iPhone and desktop). `?backend=webgl` still forces WebGL for testing.
+
+**Trade-offs / follow-ups:**
+- Speed: ~10 fps on this phone on WASM (same as its WebGL rate). Enough for setup and preview; serve detection (Stage 6) will likely need more. Options later: feed the model a smaller copy of the frame, or enable multi-threaded WASM.
+- The rule is based on one confirmed Mali device. Mali is common (many Samsung, MediaTek and Google Pixel phones), so all Mali GPUs are routed to WASM until a WebGL fix is proven. A start-up self-test on a reference image would make this automatic for any GPU; deferred.
+- Legs scored lower than the upper body (knees/ankles 0.04–0.44) in this test; Stage 2's readiness check must require them before practice starts.

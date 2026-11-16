@@ -4,10 +4,13 @@
  * Uses the globals `tf` and `poseDetection` from the pinned scripts in index.html.
  *
  * - The model is loaded once (a second request while loading waits for the first).
- * - Backend: WebGL (GPU) by default. Some phone GPUs can't render 32-bit float textures and
- *   fall back to 16-bit, which is known to degrade MoveNet's keypoints and confidence scores.
- *   On those devices we use the WASM (CPU) backend instead. `?backend=wasm` or
- *   `?backend=webgl` in the URL forces one, for side-by-side testing.
+ * - Backend: WebGL (GPU) by default; WASM (CPU) where WebGL is known to give wrong results:
+ *     - ARM Mali GPUs. Evidence (16 Nov, Android 10, Mali-G610 MC4, Chrome 157): on WebGL,
+ *       MoveNet returned no pose in 332 frames with a person in view; on WASM, same phone and
+ *       frames, 15/17 keypoints and a correct skeleton. The GPU reported full 32-bit support,
+ *       so the float check below would not have caught it.
+ *     - GPUs that can't render 32-bit float textures (known to degrade MoveNet).
+ *   `?backend=wasm` or `?backend=webgl` in the URL forces one, for side-by-side testing.
  * - The loop can be started and stopped; it processes one frame at a time (no overlap),
  *   skips frames when the video isn't playing, and measures frames per second.
  */
@@ -44,7 +47,7 @@ async function useWasm(reason) {
   tf.wasm.setWasmPaths(WASM_BASE);
   await tf.setBackend('wasm');
   await tf.ready();
-  backendInfo = { name: 'wasm', reason, float32: backendInfo.float32 };
+  backendInfo = { name: 'wasm', reason, float32: backendInfo.float32, gpu: backendInfo.gpu || gpuName() };
 }
 
 async function chooseBackend() {
@@ -55,8 +58,12 @@ async function chooseBackend() {
     if (!ok) throw new Error('WebGL unavailable');
     await tf.ready();
     const float32 = tf.env().getBool('WEBGL_RENDER_FLOAT32_CAPABLE');
-    backendInfo = { name: 'webgl', reason: forced === 'webgl' ? 'forced by URL' : 'default', float32 };
-    if (!float32 && forced !== 'webgl') await useWasm('GPU cannot render 32-bit floats');
+    const gpu = gpuName();
+    backendInfo = { name: 'webgl', reason: forced === 'webgl' ? 'forced by URL' : 'default', float32, gpu };
+    if (forced !== 'webgl') {
+      if (/Mali/i.test(gpu)) await useWasm('Mali GPU: WebGL results unreliable');
+      else if (!float32) await useWasm('GPU cannot render 32-bit floats');
+    }
   } catch (error) {
     await useWasm('WebGL failed: ' + error.message);
   }
