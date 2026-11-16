@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 604 420" width="604" height="420" role="img" aria-label="Placeholder: Trophy position">
+  <rect width="604" height="420" fill="#0F2B52"/>
+  <g fill="none" stroke="#C9D7E8" stroke-opacity=".55" stroke-width="2" stroke-dasharray="8 6">
+    <rect x="22" y="22" width="270" height="376" rx="14"/>
+    <rect x="312" y="22" width="270" height="376" rx="14"/>
+  </g>
+  <g fill="#C9D7E8" fill-opacity=".35">
+    <circle cx="157" cy="150" r="22"/><rect x="137" y="180" width="40" height="90" rx="12"/>
+    <circle cx="447" cy="150" r="22"/><rect x="427" y="180" width="40" height="90" rx="12"/>
+  </g>
+  <g font-family="Atkinson Hyperlegible, system-ui, sans-serif" font-weight="700" text-anchor="middle" fill="#EAF1FB">
+    <text x="157" y="320" font-size="20">Your frame</text>
+    <text x="447" y="320" font-size="20">Coach reference</text>
+    <text x="302" y="372" font-size="16" fill="#D8F23A">Trophy position · placeholder</text>
+  </g>
+</svg>
