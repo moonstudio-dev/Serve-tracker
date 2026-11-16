@@ -8,9 +8,13 @@
  *   matches the requested size better (seen on iPhone, 16 Nov). If no rear camera exists
  *   (desktop, some tablets), we fall back to a preferred rear camera, then to any camera,
  *   and report which one we got so the UI can explain.
- * - Asks for a portrait-shaped picture when the screen is portrait. Some browsers honour
- *   this (iPhone Safari), others return landscape (often Android Chrome). We never assume:
- *   callers must read the real size from the video element / getInfo().
+ * - Size: always ask for 1280x720 written the camera sensor's way (landscape). Both Safari
+ *   and Chrome read width/height in the sensor's orientation and then rotate the picture to
+ *   match the phone, so an upright phone gets a full portrait 720x1280 frame. Asking for
+ *   720x1280 instead made both browsers cut a 1280x720 strip out of the middle of the view
+ *   (only ~1/3 of the height; Camera test, iPhone and Android, 16 Nov). Safety net: if an
+ *   upright phone still gets a landscape frame, retry with no size request (full view,
+ *   480x640 on both test phones). Callers still read the real size from the video element.
  * - stopCamera() stops every track, which turns the camera (and its indicator light) off.
  * - Errors come back as a plain-English message instead of alert().
  */
@@ -24,8 +28,7 @@ function isPortraitScreen() {
 }
 
 function size() {
-  const portrait = isPortraitScreen();
-  return { width: { ideal: portrait ? 720 : 1280 }, height: { ideal: portrait ? 1280 : 720 } };
+  return { width: { ideal: 1280 }, height: { ideal: 720 } }; // sensor orientation; see header
 }
 
 /** Attempts in order. Each is tried only if the previous one can't be satisfied. */
@@ -63,8 +66,21 @@ async function openStream() {
   const list = attempts();
   for (let i = 0; i < list.length; i++) {
     try {
-      const s = await navigator.mediaDevices.getUserMedia(list[i]);
+      let s = await navigator.mediaDevices.getUserMedia(list[i]);
       lastAttempt = ['rear camera required', 'rear camera preferred', 'any camera'][i];
+      const st = s.getVideoTracks()[0].getSettings();
+      if (isMobileDevice() && isPortraitScreen() && st.width > st.height) {
+        // Upright phone but landscape frame: that is a cropped strip. Retry without a size.
+        const facing = list[i].video && list[i].video.facingMode;
+        // Release the camera first: some Android phones can't open it twice.
+        s.getTracks().forEach((t) => t.stop());
+        try {
+          s = await navigator.mediaDevices.getUserMedia({ audio: false, video: facing ? { facingMode: facing } : true });
+          lastAttempt += ', no size (portrait fallback)';
+        } catch (e) {
+          s = await navigator.mediaDevices.getUserMedia(list[i]); // reopen the original request
+        }
+      }
       return s;
     } catch (error) {
       // Only "this camera/setting doesn't exist" moves on to the next attempt.
@@ -141,8 +157,8 @@ export function getInfo(videoEl) {
  * camera's full field of view. Evidence for the "picture is zoomed in" finding, 16 Nov.
  * --------------------------------------------------------------------------------------- */
 export const CAMERA_TEST_VARIANTS = [
-  { id: 'A-current', note: 'current app request: portrait size', video: { facingMode: { exact: 'environment' }, width: { ideal: 720 }, height: { ideal: 1280 } } },
-  { id: 'B-landscape-size', note: 'landscape size numbers', video: { facingMode: { exact: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+  { id: 'A-portrait-size', note: 'old request (before v1.1.5): portrait size', video: { facingMode: { exact: 'environment' }, width: { ideal: 720 }, height: { ideal: 1280 } } },
+  { id: 'B-landscape-size', note: 'current request (v1.1.5+): sensor-orientation size', video: { facingMode: { exact: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
   { id: 'C-no-size', note: 'no size requested', video: { facingMode: { exact: 'environment' } } },
   { id: 'D-no-crop', note: 'no size, cropping disabled (Chrome)', video: { facingMode: { exact: 'environment' }, resizeMode: 'none' } },
 ];

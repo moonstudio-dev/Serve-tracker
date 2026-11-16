@@ -174,3 +174,16 @@ Notes from the data:
 - But neither phone had the whole body in frame: Android cut off the head (nose y = −40), iPhone cut off the feet (knees at the bottom edge).
 - Measured from the body (hip-to-ankle ≈ 445 px of 720), the frame covers only ≈ 1.5 m of height on both phones. A main camera held upright at 3–5 m should cover well over 3 m. Hypothesis: with the current size request, both browsers deliver an upright 1280×720 strip cropped out of the tall camera view, and the preview then shows only its middle third.
 - To test this rather than guess: debug panel → **Camera test** opens the rear camera with four requests (A current portrait size, B landscape size, C no size, D no size + no crop) and records size and a whole-frame thumbnail for each. The request that keeps the full field of view becomes the default. v1.1.4.
+
+### Camera field of view: cause confirmed and fixed (16 Nov, 22:20–22:24, v1.1.5)
+Camera test, same wall, phone still, on both phones:
+| Request | iPhone Safari | Android Chrome | View |
+|---|---|---|---|
+| A: 720×1280 (portrait numbers, used until v1.1.4) | 1280×720 | 1280×720, `crop-and-scale` | zoomed strip, ~1/3 of the height |
+| B: 1280×720 (landscape numbers) | 720×1280 | 720×1280, `resizeMode: none` | full height, matches the 9:16 preview |
+| C: no size | 480×640 | 480×640 | full height, slightly wider, low resolution |
+| D: no size, no crop | 480×640 | 480×640 | same as C |
+
+**Cause:** both browsers read width/height in the camera sensor's (landscape) orientation and then rotate the picture to the phone. Asking for 720×1280 therefore produced a 1280×720 strip cut out of the middle of the view. That is why the body never fitted (≈ 1.5 m of height visible).
+
+**Fix (v1.1.5):** always request 1280×720 in sensor orientation; an upright phone receives a full-view 720×1280 portrait frame that fills the preview with no cropping. Safety net: if an upright phone still receives a landscape frame, the camera is released and reopened with no size request (C). Tested on simulated devices (rotating, always-landscape, desktop) and with the alignment and lifecycle tests.
