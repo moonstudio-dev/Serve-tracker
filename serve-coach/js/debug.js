@@ -18,17 +18,18 @@ export function debugEnabled() {
   return new URLSearchParams(location.search).has('debug');
 }
 
-export function initDebug({ video, canvas, overlay, minScore }) {
+export function initDebug({ video, canvas, overlay, minScore, cameraTest }) {
   if (!debugEnabled()) return { onPoses() {}, note() {} };
 
   const panel = document.createElement('div');
   panel.id = 'debugPanel';
   panel.setAttribute('aria-hidden', 'true');
-  panel.innerHTML = '<div class="dbg-bar"><b>Debug</b><button type="button" data-a="check">Model check</button><button type="button" data-a="copy">Copy</button><button type="button" data-a="hide">Hide</button></div><div class="dbg-check" hidden></div><pre></pre>';
+  panel.innerHTML = '<div class="dbg-bar"><b>Debug</b><button type="button" data-a="check">Model check</button><button type="button" data-a="camtest">Camera test</button><button type="button" data-a="copy">Copy</button><button type="button" data-a="hide">Hide</button></div><div class="dbg-check" hidden></div><pre></pre>';
   document.body.appendChild(panel);
   const pre = panel.querySelector('pre');
   const checkBox = panel.querySelector('.dbg-check');
   let lastCheck = null;
+  let lastCamTest = null;
   let lastPose = null;
   const events = [];
 
@@ -69,6 +70,7 @@ export function initDebug({ video, canvas, overlay, minScore }) {
       },
       keypoints: kps,
       modelCheck: lastCheck,
+      cameraTest: lastCamTest,
       events: events.slice(-10),
     };
   }
@@ -121,6 +123,30 @@ export function initDebug({ video, canvas, overlay, minScore }) {
         checkBox.textContent = 'Model check failed: ' + err.message;
       }
       e.target.textContent = 'Model check';
+    }
+    if (a === 'camtest' && cameraTest) {
+      e.target.textContent = 'Testing…';
+      checkBox.hidden = false;
+      checkBox.textContent = 'Trying 4 camera requests… keep the phone still.';
+      try {
+        const res = await cameraTest();
+        lastCamTest = res;
+        checkBox.innerHTML = '';
+        const row = document.createElement('div');
+        row.className = 'dbg-thumbs';
+        res.forEach((r) => {
+          const f = document.createElement('figure');
+          const cap = document.createElement('figcaption');
+          cap.textContent = r.ok ? `${r.id} · ${r.video}` : `${r.id} · failed: ${r.error}`;
+          if (r.ok) { const img = new Image(); img.src = r.thumb; img.alt = r.id; f.append(img); }
+          f.append(cap); row.appendChild(f);
+        });
+        checkBox.append(row);
+        note('camera test: ' + res.map((r) => r.id + '=' + (r.ok ? r.video : r.error)).join(', '));
+      } catch (err) {
+        checkBox.textContent = 'Camera test failed: ' + err.message;
+      }
+      e.target.textContent = 'Camera test';
     }
     if (a === 'copy') {
       const text = JSON.stringify(snapshot(), null, 1);

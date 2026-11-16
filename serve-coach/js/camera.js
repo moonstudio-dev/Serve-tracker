@@ -133,3 +133,42 @@ export function getInfo(videoEl) {
     frameRate: s.frameRate ? Math.round(s.frameRate) : 0,
   };
 }
+
+/* ---------------------------------------------------------------------------------------
+ * Camera request test (debug only). Opens the rear camera with several different requests,
+ * one at a time, and records what each delivers: size, settings and a thumbnail of the
+ * WHOLE frame. Comparing the thumbnails (phone held still) shows which request keeps the
+ * camera's full field of view. Evidence for the "picture is zoomed in" finding, 16 Nov.
+ * --------------------------------------------------------------------------------------- */
+export const CAMERA_TEST_VARIANTS = [
+  { id: 'A-current', note: 'current app request: portrait size', video: { facingMode: { exact: 'environment' }, width: { ideal: 720 }, height: { ideal: 1280 } } },
+  { id: 'B-landscape-size', note: 'landscape size numbers', video: { facingMode: { exact: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } } },
+  { id: 'C-no-size', note: 'no size requested', video: { facingMode: { exact: 'environment' } } },
+  { id: 'D-no-crop', note: 'no size, cropping disabled (Chrome)', video: { facingMode: { exact: 'environment' }, resizeMode: 'none' } },
+];
+
+export async function probeCamera(variant) {
+  const v = document.createElement('video');
+  v.muted = true; v.setAttribute('playsinline', ''); v.autoplay = true;
+  let s = null;
+  try {
+    s = await navigator.mediaDevices.getUserMedia({ audio: false, video: variant.video });
+    v.srcObject = s;
+    await v.play();
+    await new Promise((r) => setTimeout(r, 700)); // let exposure and size settle
+    const w = v.videoWidth, h = v.videoHeight;
+    const k = 120 / Math.max(w, h);
+    const c = document.createElement('canvas');
+    c.width = Math.round(w * k); c.height = Math.round(h * k);
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    const st = s.getVideoTracks()[0].getSettings();
+    return { id: variant.id, note: variant.note, ok: true, video: w + 'x' + h,
+      settings: { width: st.width, height: st.height, aspectRatio: st.aspectRatio && +st.aspectRatio.toFixed(3), resizeMode: st.resizeMode, zoom: st.zoom },
+      thumb: c.toDataURL('image/jpeg', 0.7) };
+  } catch (e) {
+    return { id: variant.id, note: variant.note, ok: false, error: e.name || String(e) };
+  } finally {
+    if (s) s.getTracks().forEach((t) => t.stop());
+    v.srcObject = null;
+  }
+}

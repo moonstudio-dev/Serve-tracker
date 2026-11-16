@@ -15,7 +15,7 @@
  */
 
 import { KEYS, prefs } from './store.js';
-import { startCamera, stopCamera, isCameraActive, isMobileDevice } from './camera.js';
+import { startCamera, stopCamera, isCameraActive, isMobileDevice, probeCamera, CAMERA_TEST_VARIANTS } from './camera.js';
 import { loadMoveNet, startPoseLoop, stopPoseLoop } from './pose.js';
 import { SkeletonOverlay, MIN_DRAW_SCORE } from './overlay.js';
 import { initDebug } from './debug.js';
@@ -155,7 +155,16 @@ function startLevel() {
 const video = $('cameraPreview');
 const canvas = $('skeletonCanvas');
 const overlay = new SkeletonOverlay(canvas, video);
-const debug = initDebug({ video, canvas, overlay, minScore: MIN_DRAW_SCORE });
+const debug = initDebug({ video, canvas, overlay, minScore: MIN_DRAW_SCORE, cameraTest: runCameraTest });
+
+/** Debug only: stop the preview, try each camera request in turn, then restart the preview. */
+async function runCameraTest() {
+  stopPreview();
+  const results = [];
+  for (const v of CAMERA_TEST_VARIANTS) results.push(await probeCamera(v));
+  if (inCameraStep()) startPreview();
+  return results;
+}
 let previewToken = 0;   // changes whenever the preview is started or stopped
 let previewOn = false;
 

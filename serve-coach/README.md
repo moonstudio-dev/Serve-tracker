@@ -168,3 +168,9 @@ Notes from the data:
 | Dots and lines aligned around the frame | Passed (phones, upper body; automated mapping test incl. edges) |
 | Full body tracked at 3–5 m, feet in frame | Not yet confirmed on phones |
 | Camera stops when leaving the camera screen | Passed (automated); not yet confirmed on phones |
+
+### Full-body test (16 Nov, 22:13) and field-of-view finding
+- Every body part is tracked when it is in the picture: Android legs scored well (knees 0.55–0.75, ankles 0.55–0.62); iPhone tracked raised arms above the head (elbows/wrists 0.27–0.58).
+- But neither phone had the whole body in frame: Android cut off the head (nose y = −40), iPhone cut off the feet (knees at the bottom edge).
+- Measured from the body (hip-to-ankle ≈ 445 px of 720), the frame covers only ≈ 1.5 m of height on both phones. A main camera held upright at 3–5 m should cover well over 3 m. Hypothesis: with the current size request, both browsers deliver an upright 1280×720 strip cropped out of the tall camera view, and the preview then shows only its middle third.
+- To test this rather than guess: debug panel → **Camera test** opens the rear camera with four requests (A current portrait size, B landscape size, C no size, D no size + no crop) and records size and a whole-frame thumbnail for each. The request that keeps the full field of view becomes the default. v1.1.4.
