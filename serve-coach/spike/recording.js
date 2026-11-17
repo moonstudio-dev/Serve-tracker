@@ -413,6 +413,8 @@ async function openReplay(meta) {
   r.orientationMatchesRecording = replay.videoWidth === meta.width && replay.videoHeight === meta.height;
   r.orientationSwapped = replay.videoWidth === meta.height && replay.videoHeight === meta.width;
   r.durationReportedS = Number.isFinite(replay.duration) ? +replay.duration.toFixed(2) : String(replay.duration);
+  // Video longer than our own clock suggests the file starts before MediaRecorder's 'start' event.
+  r.videoMinusClockMs = Number.isFinite(replay.duration) ? Math.round(replay.duration * 1000 - meta.durationMs) : null;
   r.seekableEndS = replay.seekable.length ? +replay.seekable.end(replay.seekable.length - 1).toFixed(2) : 0;
   $('replayBox').classList.toggle('mirror', $('mirrorBtn').getAttribute('aria-pressed') === 'true');
   renderReport();
@@ -512,13 +514,13 @@ $('seekBtn').addEventListener('click', async () => {
 $('syncBtn').addEventListener('click', async () => {
   if (!current || !detector) { $('replayStatus').textContent = 'Load a recording first (and wait for tracking to load).'; return; }
   replay.pause();
-  $('replayStatus').textContent = 'Measuring sync… (about 20 seconds)';
+  $('replayStatus').textContent = 'Measuring sync… (about 20–40 seconds)';
   const f = current.frames.filter((x) => x.kp && x.kp.filter((v, i) => i % 3 === 2 && v >= 0.4).length >= 10);
   if (f.length < 10) { $('replayStatus').textContent = 'Not enough well-tracked frames in this clip.'; return; }
   const samples = [];
   const n = 12;
   for (let i = 1; i <= n; i++) samples.push(f[Math.floor((i * f.length) / (n + 1))].t);
-  const offsets = []; for (let o = -400; o <= 400; o += 20) offsets.push(o);
+  const offsets = []; for (let o = -1500; o <= 1500; o += 20) offsets.push(o);
   const err = new Array(offsets.length).fill(0), cnt = new Array(offsets.length).fill(0);
   const savedMin = detector.minPoseScore;
   detector.minPoseScore = -1;
@@ -547,7 +549,8 @@ $('syncBtn').addEventListener('click', async () => {
   let best = 0; mean.forEach((m, j) => { if (m < mean[best]) best = j; });
   const z = offsets.indexOf(0);
   report.replay.sync = {
-    method: 're-detect replay frames and match saved keypoints across −400…+400 ms',
+    method: 're-detect replay frames and match saved keypoints across −1500…+1500 ms',
+    atSearchEdge: Math.abs(offsets[best]) >= 1500,
     samples: samples.length,
     bestOffsetMs: offsets[best],
     meanErrorAtBest: +mean[best].toFixed(4), meanErrorAtZero: +mean[z].toFixed(4),
