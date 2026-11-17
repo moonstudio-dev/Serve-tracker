@@ -14,7 +14,7 @@
  *     Video recordings library)
  */
 
-import { KEYS, prefs, recoverUnfinishedClips } from './store.js';
+import { KEYS, prefs, recoverUnfinishedClips, markUnknownTripodPositions } from './store.js';
 import { probeCamera, CAMERA_TEST_VARIANTS } from './camera.js';
 import { MIN_DRAW_SCORE } from './overlay.js';
 import { Preview } from './preview.js';
@@ -53,7 +53,11 @@ function route() {
     if (t.dataset.tab === tab) t.setAttribute('aria-current', 'page');
     else t.removeAttribute('aria-current');
   });
-  if (h === 'setup') showStep(step);
+  if (h === 'setup') {
+    Object.assign(cfg, prefs.get(KEYS.cfg) || {}); // Record may have changed side or tripod position
+    pick('side', cfg.side); pick('pos', cfg.position || ''); layout();
+    showStep(step);
+  }
   if (h === 'record' && prev !== 'record') record.enter();
   if (h === 'progress') library.render();
   if (h === 'practice') practice.enter();
@@ -86,12 +90,46 @@ function pick(attr, val) {
 }
 document.querySelectorAll('[data-hand]').forEach((b) => b.addEventListener('click', () => { cfg.hand = b.dataset.hand; pick('hand', cfg.hand); layout(); }));
 document.querySelectorAll('[data-side]').forEach((b) => b.addEventListener('click', () => { cfg.side = b.dataset.side; pick('side', cfg.side); layout(); }));
+// Tripod position (physical place on court) — separate from serving side and phone camera.
+// No default: the player must choose, so clips never carry a guessed position.
+document.querySelectorAll('[data-pos]').forEach((b) => b.addEventListener('click', () => {
+  cfg.position = b.dataset.pos; pick('pos', cfg.position); layout();
+  record.setTripod(cfg.position);
+  if (step === 1) { $('nextStep').disabled = false; $('nextStep').style.opacity = 1; }
+}));
 pick('hand', cfg.hand);
 pick('side', cfg.side);
+if (cfg.position) pick('pos', cfg.position);
 
 function layout() {
   const px = cfg.side === 'deuce' ? 77 : 63;
   const right = cfg.hand === 'R';
+  const behind = cfg.position === 'behind';
+  $('s2Title').innerHTML = behind ? 'Put the tripod behind you' : 'Put the tripod side&#8209;on';
+  $('s2Text').textContent = behind ? 'From behind, the camera looks past you towards the net.' : 'From the side, the camera sees your whole body side-on.';
+  $('tipsBehind').hidden = !behind;
+  $('tipsSide').hidden = behind;
+  $('s3Dist').textContent = behind ? 'about 3–4 m' : 'about 5 m';
+  if (behind) {
+    $('player').querySelector('circle').setAttribute('cx', px);
+    $('player').querySelector('text').setAttribute('x', px + 13);
+    $('player').querySelector('text').setAttribute('y', 135);
+    $('tripod').querySelector('circle').setAttribute('cx', px);
+    $('tripod').querySelector('circle').setAttribute('cy', 160);
+    $('tripT').setAttribute('x', px + 9); $('tripT').setAttribute('y', 162); $('tripT').setAttribute('text-anchor', 'start');
+    $('cone').setAttribute('points', px + ',160 ' + (px - 13) + ',96 ' + (px + 13) + ',96');
+    $('sight').setAttribute('x1', px); $('sight').setAttribute('x2', px);
+    $('sight').setAttribute('y1', 160); $('sight').setAttribute('y2', 96);
+    $('distOut').firstChild.nodeValue = 'About 3–4 m behind you';
+    $('distSteps').textContent = 'roughly 4–5 big steps';
+    $('farNote').hidden = true;
+    prefs.set(KEYS.cfg, cfg);
+    return;
+  }
+  $('player').querySelector('text').setAttribute('y', 146);
+  $('tripod').querySelector('circle').setAttribute('cy', 133);
+  $('tripT').setAttribute('y', 124);
+  $('sight').setAttribute('y1', 133); $('sight').setAttribute('y2', 133);
   const cx = right ? 131 : 9;
   $('player').querySelector('circle').setAttribute('cx', px);
   $('player').querySelector('text').setAttribute('x', px);
@@ -124,7 +162,7 @@ function showStep(n) {
   $('backBtn').parentNode.style.gridTemplateColumns = n === 1 ? '1fr' : '';
   const nb = $('nextStep');
   nb.textContent = n === 5 ? 'Save spot and start' : 'Next';
-  nb.disabled = n === 4 && !checksDone;
+  nb.disabled = (n === 4 && !checksDone) || (n === 1 && !cfg.position);
   nb.style.opacity = nb.disabled ? 0.45 : 1;
   if (n === 3) startLevel();
   if (n === 4) startPreview(); else stopPreview();
@@ -134,7 +172,8 @@ function showStep(n) {
 $('backBtn').addEventListener('click', () => { if (step > 1) showStep(step - 1); });
 $('nextStep').addEventListener('click', () => {
   if (step < 5) { showStep(step + 1); return; }
-  prefs.set(KEYS.spot, { hand: cfg.hand, side: cfg.side, saved: Date.now() });
+  prefs.set(KEYS.spot, { hand: cfg.hand, side: cfg.side, position: cfg.position, saved: Date.now() });
+  record.setTripod(cfg.position);
   updatePill();
   location.hash = '#record';
 });
@@ -142,9 +181,11 @@ $('nextStep').addEventListener('click', () => {
 function fillSummary() {
   const right = cfg.hand === 'R';
   const far = (cfg.side === 'deuce') !== right;
+  const behind = cfg.position === 'behind';
   const rows = [
-    ['Camera', 'Baseline line, outside the ' + (right ? 'right' : 'left') + ' doubles line'],
-    ['Distance', far ? 'About 7 m' : 'About 5 m'],
+    ['Tripod position', behind ? 'Behind you, facing the net' : 'Side, filming you side-on'],
+    ['Tripod spot', behind ? 'Straight behind your serving spot' : 'Baseline line, outside the ' + (right ? 'right' : 'left') + ' doubles line'],
+    ['Distance', behind ? 'About 3–4 m' : far ? 'About 7 m' : 'About 5 m'],
     ['Height', 'Hip height, phone upright'],
     ['Lens', 'Main 1× lens'],
     ['Serving from', cfg.side === 'deuce' ? 'Deuce side' : 'Ad side'],
@@ -363,5 +404,5 @@ $('noteForm').addEventListener('submit', (e) => {
   drawNotes();
 });
 
-recoverUnfinishedClips().catch(() => {}); // clips left 'recording' by a crash/closed tab → kept as interrupted
+recoverUnfinishedClips().then(markUnknownTripodPositions).catch(() => {}); // clips left 'recording' by a crash/closed tab → kept as interrupted
 route();

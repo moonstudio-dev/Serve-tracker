@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-version="1.3.0">
+<html lang="en" data-version="1.4.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -275,6 +275,7 @@ svg{display:block}
 .rec-badge::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#fff;margin-right:6px;vertical-align:1px;animation:recblink 1s steps(2) infinite}
 @keyframes recblink{50%{opacity:.2}}
 .rec-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rec-screen .rec-controls>div:nth-child(3){grid-column:1/-1}
 .rec-label{display:block;font-size:.8125rem;font-weight:700;opacity:.85;margin-bottom:6px}
 .rec-screen .seg{background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.3)}
 .rec-screen .seg button{color:#fff;border-color:transparent;background:transparent}
@@ -300,6 +301,11 @@ svg{display:block}
 .rec-screen .btn-danger{background:transparent;color:#FFB4A8;box-shadow:inset 0 0 0 2px rgba(255,180,168,.6)}
 .rec-screen .btn-danger.armed{background:#E5484D;color:#fff;box-shadow:none}
 .rec-resume .row{display:flex;gap:8px;flex-wrap:wrap}
+.pos-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pos-opt{display:grid;gap:4px;justify-items:center;text-align:center;padding:10px 8px 12px;border-radius:18px;border:0;background:var(--surface-2);color:var(--ink);cursor:pointer;box-shadow:0 0 0 1.5px var(--rule);font:inherit}
+.pos-opt svg{width:100%;max-width:150px;height:auto;color:var(--ink)}
+.pos-opt b{font-size:1.1rem}.pos-opt span{font-size:.8rem;color:var(--ink-2);line-height:1.3}
+.pos-opt[aria-pressed="true"]{box-shadow:0 0 0 3px var(--ball);background:var(--surface)}
 .p-stepper{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:12px;margin-top:12px}
 .p-step{width:52px;height:52px;border-radius:50%;border:0;background:var(--surface-2);color:var(--ink);font-size:1.6rem;font-weight:700;cursor:pointer;box-shadow:0 0 0 1.5px var(--rule)}
 .p-step:disabled{opacity:.4}
@@ -365,26 +371,27 @@ svg{display:block}
 <!-- version:start -->
 <script type="importmap">
 {"imports": {
-  "./js/app.js": "./js/app.js?v=1.3.0",
-  "./js/camera.js": "./js/camera.js?v=1.3.0",
-  "./js/pose.js": "./js/pose.js?v=1.3.0",
-  "./js/overlay.js": "./js/overlay.js?v=1.3.0",
-  "./js/debug.js": "./js/debug.js?v=1.3.0",
-  "./js/store.js": "./js/store.js?v=1.3.0",
-  "./js/preview.js": "./js/preview.js?v=1.3.0",
-  "./js/record.js": "./js/record.js?v=1.3.0",
-  "./js/tracking-quality.js": "./js/tracking-quality.js?v=1.3.0",
-  "./js/session.js": "./js/session.js?v=1.3.0",
-  "./js/serve-detector.js": "./js/serve-detector.js?v=1.3.0",
-  "./js/features.js": "./js/features.js?v=1.3.0",
-  "./js/recorder.js": "./js/recorder.js?v=1.3.0",
-  "./js/coach.js": "./js/coach.js?v=1.3.0",
-  "./js/replay.js": "./js/replay.js?v=1.3.0",
-  "./js/library.js": "./js/library.js?v=1.3.0",
-  "./js/practice.js": "./js/practice.js?v=1.3.0"
+  "./js/app.js": "./js/app.js?v=1.4.0",
+  "./js/camera.js": "./js/camera.js?v=1.4.0",
+  "./js/pose.js": "./js/pose.js?v=1.4.0",
+  "./js/overlay.js": "./js/overlay.js?v=1.4.0",
+  "./js/debug.js": "./js/debug.js?v=1.4.0",
+  "./js/store.js": "./js/store.js?v=1.4.0",
+  "./js/preview.js": "./js/preview.js?v=1.4.0",
+  "./js/record.js": "./js/record.js?v=1.4.0",
+  "./js/tracking-quality.js": "./js/tracking-quality.js?v=1.4.0",
+  "./js/session.js": "./js/session.js?v=1.4.0",
+  "./js/serve-detector.js": "./js/serve-detector.js?v=1.4.0",
+  "./js/features.js": "./js/features.js?v=1.4.0",
+  "./js/recorder.js": "./js/recorder.js?v=1.4.0",
+  "./js/coach.js": "./js/coach.js?v=1.4.0",
+  "./js/replay.js": "./js/replay.js?v=1.4.0",
+  "./js/library.js": "./js/library.js?v=1.4.0",
+  "./js/practice.js": "./js/practice.js?v=1.4.0",
+  "./js/labels.js": "./js/labels.js?v=1.4.0"
 }}
 </script>
-<script type="module" src="js/app.js?v=1.3.0"></script>
+<script type="module" src="js/app.js?v=1.4.0"></script>
 <!-- version:end -->
 </head>
 <body>
@@ -443,21 +450,27 @@ svg{display:block}
 
   <!-- step 1 -->
   <div class="step screen" data-step="1" style="padding:0">
-    <div class="step-h"><span class="n">Step 1 of 5</span><h2 class="h1like" style="font-size:2.6rem">Who’s serving?</h2><p>This decides which side of the court your camera goes on.</p></div>
+    <div class="step-h"><span class="n">Step 1 of 5</span><h2 class="h1like" style="font-size:2.6rem">Who’s serving?</h2><p>Your serving hand and where your tripod will stand.</p></div>
     <div><span class="field-label" id="handL">You serve with your</span>
       <div class="seg" role="group" aria-labelledby="handL"><button type="button" data-hand="R" aria-pressed="true">Right hand</button><button type="button" data-hand="L" aria-pressed="false">Left hand</button></div></div>
     <p class="callout" id="sidePlanned" hidden></p>
     <div id="sideField"><span class="field-label" id="sideL">You’re practising from the</span>
       <div class="seg" role="group" aria-labelledby="sideL"><button type="button" data-side="deuce" aria-pressed="true">Deuce side</button><button type="button" data-side="ad" aria-pressed="false">Ad side</button></div>
       <p class="kicker" style="margin-top:8px">Deuce is the right half as you face the net.</p></div>
+    <div><span class="field-label" id="posL">Where will your tripod stand?</span>
+      <div class="pos-opts" role="group" aria-labelledby="posL">
+        <button type="button" class="pos-opt" data-pos="behind" aria-pressed="false"><svg viewBox="0 0 120 92" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55"><rect x="15" y="8" width="90" height="56"/><line x1="26" y1="8" x2="26" y2="64"/><line x1="94" y1="8" x2="94" y2="64"/><line x1="26" y1="30" x2="94" y2="30"/><line x1="60" y1="8" x2="60" y2="30"/></g><line x1="8" y1="8" x2="112" y2="8" stroke="currentColor" stroke-width="2" stroke-dasharray="2 1.5"/><text x="60" y="5" fill="currentColor" font-size="5.5" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif">Net</text><polygon points="74,84 62,20 86,20" fill="#D8F23A" opacity=".35"/><circle cx="74" cy="66" r="4" fill="currentColor"/><text x="84" y="64" fill="currentColor" font-size="6" font-family="Atkinson Hyperlegible, sans-serif">You</text><circle cx="74" cy="84" r="4.4" fill="#D8F23A" stroke="#1B2A05"/><text x="84" y="87" fill="currentColor" font-size="6" font-weight="700" font-family="Atkinson Hyperlegible, sans-serif">Tripod</text></svg><b>Behind</b><span>Behind you near the baseline, facing the net</span></button>
+        <button type="button" class="pos-opt" data-pos="side" aria-pressed="false"><svg viewBox="0 0 120 92" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.2" opacity=".55"><rect x="15" y="8" width="90" height="56"/><line x1="26" y1="8" x2="26" y2="64"/><line x1="94" y1="8" x2="94" y2="64"/><line x1="26" y1="30" x2="94" y2="30"/><line x1="60" y1="8" x2="60" y2="30"/></g><line x1="8" y1="8" x2="112" y2="8" stroke="currentColor" stroke-width="2" stroke-dasharray="2 1.5"/><text x="60" y="5" fill="currentColor" font-size="5.5" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif">Net</text><polygon points="108,66 66,58 66,74" fill="#D8F23A" opacity=".35"/><circle cx="74" cy="66" r="4" fill="currentColor"/><text x="74" y="80" fill="currentColor" font-size="6" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif">You</text><circle cx="108" cy="66" r="4.4" fill="#D8F23A" stroke="#1B2A05"/><text x="104" y="80" fill="currentColor" font-size="6" font-weight="700" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif">Tripod</text></svg><b>Side</b><span>Beside you, filming you side-on</span></button>
+      </div>
+      <p class="kicker" style="margin-top:8px">This is where the tripod stands on court. Front or rear phone camera is chosen separately on the Record screen.</p></div>
     <div class="callout">You’ll need a tripod or stand that reaches hip height. A cheap one is fine; weigh it down with your bag if it’s windy.</div>
   </div>
 
   <!-- step 2 -->
   <div class="step screen" data-step="2" style="padding:0" hidden>
-    <div class="step-h"><span class="n">Step 2 of 5</span><h2 style="font-size:2.6rem">Put the tripod side&#8209;on</h2><p>Side-on is where I can see your toss drift forward and your knee slide past your ankle.</p></div>
+    <div class="step-h"><span class="n">Step 2 of 5</span><h2 style="font-size:2.6rem" id="s2Title">Put the tripod side&#8209;on</h2><p id="s2Text">From the side, the camera sees your whole body side-on.</p></div>
     <div class="panel" aria-label="Court diagram showing where the tripod goes">
-      <svg viewBox="0 0 140 150" role="img" aria-labelledby="courtT"><title id="courtT">Top-down court: the tripod stands on the baseline line, just outside the doubles sideline, facing you.</title>
+      <svg viewBox="0 0 140 172" role="img" aria-labelledby="courtT"><title id="courtT">Top-down court showing where the tripod stands.</title>
         <g fill="none" stroke="#fff" stroke-width="1.2">
           <rect x="15" y="11" width="110" height="119"/>
           <line x1="28.7" y1="11" x2="28.7" y2="130"/><line x1="111.3" y1="11" x2="111.3" y2="130"/>
@@ -469,11 +482,16 @@ svg{display:block}
         <polygon id="cone" points="131,133 77,123 77,143" fill="#D8F23A" opacity=".22"/>
         <line id="sight" x1="131" y1="133" x2="77" y2="133" stroke="#D8F23A" stroke-width="1" stroke-dasharray="2 2"/>
         <g id="player"><circle cx="77" cy="133" r="4.2" fill="#fff"/><text x="77" y="146" fill="#fff" font-size="5.5" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif">You</text></g>
-        <g id="tripod"><circle cx="131" cy="133" r="4.6" fill="#D8F23A" stroke="#1B2A05" stroke-width="1"/><text id="tripT" x="131" y="124" fill="#D8F23A" font-size="5.5" text-anchor="middle" font-weight="700" font-family="Atkinson Hyperlegible, sans-serif">Camera</text></g>
+        <g id="tripod"><circle cx="131" cy="133" r="4.6" fill="#D8F23A" stroke="#1B2A05" stroke-width="1"/><text id="tripT" x="131" y="124" fill="#D8F23A" font-size="5.5" text-anchor="middle" font-weight="700" font-family="Atkinson Hyperlegible, sans-serif">Tripod</text></g>
       </svg>
     </div>
     <p class="dist" id="distOut">About 5 m<small id="distSteps">roughly 6 big steps</small></p>
-    <ul class="tips">
+    <ul class="tips" id="tipsBehind" hidden>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><div><b>Straight behind your serving spot</b><span>Line the tripod up behind where you stand to serve.</span></div></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><div><b>Camera faces the net</b><span>It films your back, with the court in front of you.</span></div></li>
+      <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><div><b>Far enough back to fit you in</b><span>Head to feet with room above your toss. Stay clear of anyone using the back of the court.</span></div></li>
+    </ul>
+    <ul class="tips" id="tipsSide">
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><div><b id="sideTip">On your right, the side your chest faces</b><span>When you turn side-on, your chest points at the camera. I can see both arms and both knees.</span></div></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><div><b>Level with the baseline</b><span>Line the tripod up with the baseline, not in front or behind it.</span></div></li>
       <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg><div><b>Just outside the doubles line</b><span>Out of your serve’s path, and the court lines make it easy to find the same spot next time.</span></div></li>
@@ -492,7 +510,7 @@ svg{display:block}
         <line x1="66" y1="80" x2="222" y2="80" stroke="#D8F23A" stroke-width="1.5" stroke-dasharray="5 4"/>
         <g fill="#fff"><circle cx="236" cy="28" r="9"/><path d="M228 40h16l3 42h-22z"/><path d="M226 82h9l-3 68h-8zM238 82h9l2 68h-8z"/><path d="M244 44l14-22 4 3-13 22z"/><path d="M229 44l-12 18 4 3 12-17z"/></g>
         <text x="140" y="72" fill="#D8F23A" font-size="13" font-weight="700" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif">hip height, about 1 m</text>
-        <text x="148" y="140" fill="#fff" font-size="12" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif" opacity=".8">about 5 m</text>
+        <text id="s3Dist" x="148" y="140" fill="#fff" font-size="12" text-anchor="middle" font-family="Atkinson Hyperlegible, sans-serif" opacity=".8">about 5 m</text>
       </svg>
     </div>
     <ul class="tips">
@@ -563,7 +581,9 @@ svg{display:block}
     <div class="rec-controls">
       <div><span class="rec-label" id="recSideL">Court side</span>
         <div class="seg" role="group" aria-labelledby="recSideL"><button type="button" data-recside="deuce" aria-pressed="true">Deuce</button><button type="button" data-recside="ad" aria-pressed="false">Ad</button></div></div>
-      <div><span class="rec-label" id="recCamL">Camera</span>
+      <div><span class="rec-label" id="recPosL">Tripod position</span>
+        <div class="seg" role="group" aria-labelledby="recPosL"><button type="button" data-recpos="behind" aria-pressed="false">Behind</button><button type="button" data-recpos="side" aria-pressed="false">Side</button></div></div>
+      <div><span class="rec-label" id="recCamL">Phone camera</span>
         <div class="seg" role="group" aria-labelledby="recCamL"><button type="button" data-reccam="environment" aria-pressed="true">Rear</button><button type="button" data-reccam="user" aria-pressed="false">Front</button></div></div>
     </div>
     <button class="btn btn-ball btn-block" type="button" id="recBtn" disabled>Start recording</button>

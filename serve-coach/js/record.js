@@ -13,6 +13,7 @@ import { Preview } from './preview.js';
 import { PracticeSession, StorageLowError } from './session.js';
 import { getPoseInfo } from './pose.js';
 import { planText, planSides } from './practice.js';
+import { tripodName } from './labels.js';
 
 const $ = (id) => document.getElementById(id);
 const fmtTime = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -30,6 +31,9 @@ export function initRecord({ debug, openClip }) {
   let active = false;           // Record screen showing
   let side = (prefs.get(KEYS.cfg) || {}).side || 'deuce';
   let facing = prefs.get(KEYS.camera) || 'environment';
+  // Tripod position: where the tripod physically stands (Behind / Side). Separate from serving
+  // side and phone camera. Never defaulted: unset until the player chooses it.
+  let tripod = (prefs.get(KEYS.cfg) || {}).position || null;
   let timer = null;
   let interruptedWhileAway = false;
   let lastTrackUpdate = 0;
@@ -59,8 +63,9 @@ export function initRecord({ debug, openClip }) {
   function paintChoices() {
     document.querySelectorAll('[data-recside]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.recside === side)));
     document.querySelectorAll('[data-reccam]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.reccam === facing)));
+    document.querySelectorAll('[data-recpos]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.recpos === tripod)));
     const locked = practice.state !== 'idle';
-    document.querySelectorAll('[data-recside],[data-reccam]').forEach((b) => { b.disabled = locked; });
+    document.querySelectorAll('[data-recside],[data-reccam],[data-recpos]').forEach((b) => { b.disabled = locked; });
   }
   document.querySelectorAll('[data-recside]').forEach((b) => b.addEventListener('click', () => {
     if (practice.state !== 'idle') return;
@@ -68,6 +73,12 @@ export function initRecord({ debug, openClip }) {
     const cfg = prefs.get(KEYS.cfg) || {};
     prefs.set(KEYS.cfg, { ...cfg, side });
     paintChoices();
+  }));
+  document.querySelectorAll('[data-recpos]').forEach((b) => b.addEventListener('click', () => {
+    if (practice.state !== 'idle') return;
+    const changed = tripod && tripod !== b.dataset.recpos;
+    setTripod(b.dataset.recpos);
+    if (changed) msg(`Tripod position set to ${tripodName(tripod)}. Next clips are saved as ${tripodName(tripod)}.`, 'ok');
   }));
   let switching = false;
   document.querySelectorAll('[data-reccam]').forEach((b) => b.addEventListener('click', async () => {
@@ -101,9 +112,10 @@ export function initRecord({ debug, openClip }) {
     msg('');
     const v = $('recVideo');
     if (!preview.ready || !v.videoWidth) { msg('Wait for the camera and tracking to start.', 'error'); return; }
+    if (!tripod) { msg('Choose where your tripod is standing (Behind or Side) before recording.', 'error'); return; }
     try {
       const res = await practice.startClip(preview.stream, {
-        side, camera: preview.cameraMeta(), width: v.videoWidth, height: v.videoHeight, backend: getPoseInfo().backend.name,
+        side, tripodPosition: tripod, camera: preview.cameraMeta(), width: v.videoWidth, height: v.videoHeight, backend: getPoseInfo().backend.name,
       });
       if (res.warning) msg(res.warning + ' Long clips may not fit.', 'error');
     } catch (e) {
@@ -190,7 +202,7 @@ export function initRecord({ debug, openClip }) {
     const top = document.createElement('div'); top.className = 'clip-top';
     const title = document.createElement('b'); title.textContent = `Clip ${c.seq} · ${sideName(c.side)}`;
     const meta = document.createElement('span'); meta.className = 'clip-meta';
-    meta.textContent = `${camName(c.camera)} camera · ${fmtTime((c.video && c.video.durationMs) || 0)} · ${fmtMB((c.video && c.video.bytes) || 0)}`;
+    meta.textContent = `Tripod ${tripodName(c.tripodPosition)} · ${camName(c.camera)} camera · ${fmtTime((c.video && c.video.durationMs) || 0)} · ${fmtMB((c.video && c.video.bytes) || 0)}`;
     top.append(title, meta);
     li.appendChild(top);
     if (c.status && c.status.startsWith('interrupted')) {
@@ -240,6 +252,7 @@ export function initRecord({ debug, openClip }) {
   /* ---------- screen lifecycle ---------- */
   async function enter() {
     active = true;
+    tripod = (prefs.get(KEYS.cfg) || {}).position || tripod;
     paintChoices();
     updateButton();
     await offerResume();
@@ -277,7 +290,14 @@ export function initRecord({ debug, openClip }) {
   // Keep the button state in step with the camera becoming ready.
   setInterval(() => { if (active && practice.state === 'idle') updateButton(); }, 500);
 
+  function setTripod(p) {
+    if (practice.state !== 'idle' || !p) return;
+    tripod = p;
+    prefs.set(KEYS.cfg, { ...(prefs.get(KEYS.cfg) || {}), position: tripod });
+    paintChoices();
+  }
+
   function setSide(sd) { if (practice.state === 'idle') { side = sd; prefs.set(KEYS.cfg, { ...(prefs.get(KEYS.cfg) || {}), side }); paintChoices(); } }
 
-  return { enter, leave, preview, practice, setSide };
+  return { enter, leave, preview, practice, setSide, setTripod };
 }

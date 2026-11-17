@@ -36,7 +36,7 @@ export const prefs = {
 /* ------------------------------------------------------------------ IndexedDB basics */
 const DB_NAME = 'serve-coach';
 const DB_VERSION = 1;
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2; // 2: clips carry tripodPosition and video.orientation
 const BASE = () => ({ schemaVersion: SCHEMA_VERSION, ownerId: 'local', syncState: 'local-only', deletedAt: null });
 
 let dbPromise = null;
@@ -213,6 +213,22 @@ export async function recoverUnfinishedClips(exceptClipId = null) {
     });
   }
   return open.length;
+}
+
+/**
+ * Clips saved before tripod position existed (schema 1) get tripodPosition 'unknown' — never
+ * a guess — and video.orientation from their saved size. Runs once per clip; safe to repeat.
+ */
+export async function markUnknownTripodPositions() {
+  const old = (await getAll('clips')).filter((c) => !c.tripodPosition);
+  for (const c of old) {
+    const v = c.video || {};
+    await updateClip(c.id, {
+      tripodPosition: 'unknown',
+      video: { ...v, orientation: v.orientation || (v.width && v.height ? (v.height > v.width ? 'portrait' : 'landscape') : 'unknown') },
+    });
+  }
+  return old.length;
 }
 
 /* ------------------------------------------------------------------ storage status */

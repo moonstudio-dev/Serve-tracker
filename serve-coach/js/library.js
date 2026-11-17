@@ -7,6 +7,7 @@
 
 import * as store from './store.js';
 import { planText } from './practice.js';
+import { tripodName } from './labels.js';
 
 const $ = (id) => document.getElementById(id);
 const fmtTime = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -47,6 +48,8 @@ export function initLibrary({ openClip }) {
     const d = clips.filter((c) => c.side === 'deuce').length, a = clips.filter((c) => c.side === 'ad').length;
     const sub = document.createElement('p'); sub.className = 'lib-sub';
     sub.textContent = `${clips.length} clip${clips.length === 1 ? '' : 's'} · ${[d && `Deuce ${d}`, a && `Ad ${a}`].filter(Boolean).join(' · ')} · ${fmtTime(total)} · ${fmtMB(bytes)}`;
+    const pos = ['behind', 'side', 'unknown'].map((p) => [p, clips.filter((c) => (c.tripodPosition || 'unknown') === p).length]).filter(([, n]) => n);
+    sub.textContent += ` · Tripod: ${pos.map(([p, n]) => `${tripodName(p)} ${n}`).join(', ')}`;
     if (s.plan) sub.textContent += ` · Plan: ${planText(s.plan)}`;
     head.append(title);
     if (s.status === 'active') { const tag = document.createElement('span'); tag.className = 'lib-tag'; tag.textContent = 'In progress'; head.append(tag); }
@@ -58,7 +61,7 @@ export function initLibrary({ openClip }) {
       const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'lib-clip';
       const name = document.createElement('b'); name.textContent = `Clip ${c.seq} · ${sideName(c.side)}`;
       const meta = document.createElement('span');
-      meta.textContent = `${camName(c.camera)} · ${fmtTime((c.video && c.video.durationMs) || 0)}` +
+      meta.textContent = `Tripod ${tripodName(c.tripodPosition)} · ${camName(c.camera)} camera · ${fmtTime((c.video && c.video.durationMs) || 0)}` +
         (c.status === 'interrupted-empty' ? ' · no video saved' : c.status === 'interrupted' ? ' · interrupted' : '');
       const go = document.createElement('span'); go.className = 'lib-go'; go.textContent = 'Replay ›';
       btn.append(name, meta, go);

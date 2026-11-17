@@ -262,3 +262,16 @@ Headless Chrome 153 (synthetic moving marker, stand-in tracker): MP4 avc1 chosen
 - Plan shown in Progress › Video recordings and in Home › Recent practice.
 
 **Tested (headless Chrome):** plan choices and limits (1–10), no-target option, no spot → camera setup without side question, Record starts on planned side, plan line updates per side, new plan replaces unfinished practice, Record tab redirects to Practice setup after ending a practice, Home and library show the plan. Stage A and B tests pass.
+
+## MVP1 update — tripod position (v1.4.0)
+
+Product requirements: see `REQUIREMENTS.md`.
+
+- **Camera setup step 1** asks *Where will your tripod stand?* with a small court illustration for each option: **Behind** (behind the player near the baseline, facing the net) and **Side** (beside the player, side-on). No default; Next is disabled until one is chosen. Step 2 (diagram, distance, tips), step 3 distance label and step 5 summary follow the choice. Saved in prefs `sc-cfg.position` and with the spot.
+- **Record** has a *Tripod position* control (Behind / Side) next to *Court side*, and the phone camera control is now labelled *Phone camera*. Editable between clips (on-screen confirmation), locked while recording. Recording won't start until a position is chosen.
+- **Per clip:** `tripodPosition` ('behind' | 'side' | 'unknown') and `video.orientation` ('portrait' | 'landscape'); clip `schemaVersion` 2. On start-up `markUnknownTripodPositions()` sets older clips to 'unknown' (and fills orientation from their saved size).
+- **Shown in** the Record clip list, Progress (per clip and per practice, e.g. *Tripod: Behind 2, Side 1*), and Replay details (serving side, tripod position, phone camera, orientation).
+- `labels.js` holds the display names for the three separate settings.
+- Setup copy no longer claims what can be measured from an angle.
+
+**Tested (headless Chrome):** step 1 choice and illustrations, step 2 Behind and Side variants, summary, Record pre-selects the setup position, recording refused without a position, position locked while recording, change between clips saved on the next clip, old clips migrated to Unknown, library and replay labels, synced replay unaffected. Stage A, B and C tests pass.

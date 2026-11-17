@@ -18,6 +18,7 @@
 import * as store from './store.js';
 import { SkeletonOverlay } from './overlay.js';
 import { estimateFrame } from './pose.js';
+import { tripodName, orientationName } from './labels.js';
 
 const $ = (id) => document.getElementById(id);
 const fmtTime = (s) => { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -176,8 +177,10 @@ export function initReplay({ onDeleted } = {}) {
       : 'Not aligned yet';
     const rows = [
       ['Recorded', new Date(c.createdAt).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })],
-      ['Court side', sideName(c.side)],
-      ['Camera', camName(c.camera)],
+      ['Serving side', sideName(c.side)],
+      ['Tripod position', tripodName(c.tripodPosition)],
+      ['Phone camera', camName(c.camera)],
+      ['Orientation', orientationName(c.video && c.video.orientation)],
       ['Length', fmtTime(Math.round(((c.video && c.video.durationMs) || 0) / 1000))],
       ['Size', fmtMB((c.video && c.video.bytes) || 0) + ` · ${(c.video && c.video.width) || '?'}×${(c.video && c.video.height) || '?'}`],
       ['Movement', `${(c.poses && c.poses.frames) || frames.length} frames${c.poses && c.poses.fps ? ` · ${c.poses.fps} per second` : ''}`],
@@ -205,7 +208,7 @@ export function initReplay({ onDeleted } = {}) {
     clip = wantedId ? await store.getClip(wantedId) : null;
     if (token !== openToken) return;
     if (!clip) { location.hash = '#progress'; return; }
-    $('rpTitle').textContent = `Clip ${clip.seq} · ${sideName(clip.side)} · ${camName(clip.camera)}`;
+    $('rpTitle').textContent = `Clip ${clip.seq} · ${sideName(clip.side)} · Tripod ${tripodName(clip.tripodPosition)}`;
     const [{ blob }, f] = await Promise.all([store.getClipVideo(clip), store.getClipPoses(clip.id)]);
     if (token !== openToken) return;
     frames = f;

@@ -65,7 +65,8 @@ export class PracticeSession {
   /**
    * Start recording a clip.
    *   stream     the live camera MediaStream
-   *   meta       { side, camera: { facing, label }, width, height, backend }
+   *   meta       { side, tripodPosition: 'behind'|'side', camera: { facing, label }, width, height, backend }
+   * Serving side, tripod position and phone camera are separate settings, saved per clip.
    * Returns { warning } when storage is getting low. Throws StorageLowError when too low.
    */
   async startClip(stream, meta) {
@@ -81,8 +82,9 @@ export class PracticeSession {
 
       const clip = await store.createClip(this.session.id, {
         side: meta.side || null,
+        tripodPosition: meta.tripodPosition || 'unknown',
         camera: meta.camera || {},
-        video: { mime: null, width: meta.width, height: meta.height, bitrateRequested: BITRATE, bytes: 0, chunks: 0, durationMs: 0 },
+        video: { mime: null, width: meta.width, height: meta.height, orientation: meta.height > meta.width ? 'portrait' : 'landscape', bitrateRequested: BITRATE, bytes: 0, chunks: 0, durationMs: 0 },
         poses: { frames: 0, format: POSE_FORMAT, model: MODEL, backend: meta.backend || '', inputMode: 'full', fps: null },
       });
       this.clip = { ...clip, width: meta.width, height: meta.height, chunkWrites: [], poseBuffer: [], poseSeq: 0, poseFrames: 0, writeErrors: [] };
@@ -168,7 +170,7 @@ export class PracticeSession {
           status: interrupted ? 'interrupted' : 'saved',
           endedAt: new Date().toISOString(),
           stopReason: reason,
-          video: { mime: rec.mime, width: c.width, height: c.height, bitrateRequested: BITRATE, bytes: rec.bytes, chunks: rec.seq, durationMs },
+          video: { mime: rec.mime, width: c.width, height: c.height, orientation: c.height > c.width ? 'portrait' : 'landscape', bitrateRequested: BITRATE, bytes: rec.bytes, chunks: rec.seq, durationMs },
           poses: { ...c.poses, frames: c.poseFrames, fps: durationMs ? +(c.poseFrames * 1000 / durationMs).toFixed(1) : null },
           writeErrors: c.writeErrors,
         };
