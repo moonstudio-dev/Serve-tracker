@@ -481,11 +481,22 @@ $('seekBtn').addEventListener('click', async () => {
   const d = Number.isFinite(replay.duration) && replay.duration > 0 ? replay.duration : current.meta.durationMs / 1000;
   const targets = [0.15, 0.5, 0.85, 0.3].map((f) => +(d * f).toFixed(2));
   const results = [];
+  if (replay.seeking) await waitFor(replay, 'seeked', 6000); // let any jump already in progress finish first
   for (const t of targets) {
     const t0 = performance.now();
-    replay.currentTime = t;
-    const ok = await waitFor(replay, 'seeked', 6000);
-    results.push({ target: t, landed: +replay.currentTime.toFixed(2), ok, ms: Math.round(performance.now() - t0) });
+    let landed = NaN, ok = false, attempts = 0;
+    while (attempts < 2) {           // one retry, recorded, if the first jump doesn't land
+      attempts++;
+      const done = waitFor(replay, 'seeked', 6000);
+      replay.currentTime = t;
+      ok = await done;
+      landed = replay.currentTime;
+      if (Math.abs(landed - t) < 0.5) break;
+      await new Promise((r) => setTimeout(r, 300));
+      landed = replay.currentTime;
+      if (Math.abs(landed - t) < 0.5) break;
+    }
+    results.push({ target: t, landed: +landed.toFixed(2), ok, attempts, ms: Math.round(performance.now() - t0) });
   }
   report.replay.seekTest = results;
   report.replay.seekAllOk = results.every((x) => x.ok && Math.abs(x.landed - x.target) < 0.5);
