@@ -240,3 +240,13 @@ Headless Chrome 153 (synthetic moving marker, stand-in tracker): MP4 avc1 chosen
 - Persistent storage requested on first recording (granted on Android, usually not on iPhone).
 
 **Tested (headless Chrome, synthetic camera):** multiple clips with different sides/cameras in one session; controls locked while recording; reload → continue; background interruption; leave screen mid-clip; crash mid-clip → recovered; playback; two-tap delete; end practice; stored records checked (metadata, chunks, 865 pose frames). Setup, camera-selection and navigation regressions pass. Phones: pending.
+
+## MVP1 Stage B — Video recordings library and replay (v1.2.0)
+
+**Progress › Video recordings** (`library.js`): practices newest first (date, clips, Deuce/Ad count, total length, size, *In progress* tag), each clip opens Replay. Finished practices can be deleted with two taps. Storage line (our own total; free space hidden on iPhone, where the browser figure is unreliable) and an iPhone *Add to Home Screen* tip when storage isn't persistent. Example coaching content stays below, labelled as examples.
+
+**Replay** (`replay.js`, route `#replay`): opened from the library or from a clip on the Record screen (back link returns to where it was opened). Play/pause, seek bar, ±0.1 s steps, 1× / ½× / ¼×, Skeleton on/off, Mirror (flips video + skeleton only; defaults on for front-camera clips), clip details, two-tap delete.
+
+**Skeleton sync:** drawn per video frame with `requestVideoFrameCallback` (rAF fallback) using the frame's media time + the clip's offset. First replay of a clip measures its offset (10 sampled frames re-run through MoveNet via `pose.estimateFrame`, matched to saved keypoints across ±1500 ms in 20 ms steps) and saves it as `clip.sync` {offsetMs, method: measured|default, samples, errors, measuredAt}. If the clip has too little tracked movement or the result is at the search edge, a per-browser default is used and saved (iPhone 0, Android Chrome −350 ms, desktop Chrome −440 ms, from WP0). If body tracking can't load, the default is used but not saved, so it is measured next time.
+
+**Tested (headless Chrome, synthetic camera + test detector):** replay opens from Record and library, alignment measured and saved, not re-measured on reopen, skeleton drawn while playing and after seeking, speed, frame steps, skeleton toggle, mirror flips picture not controls, front-camera clip opens mirrored, reload on Replay returns to Progress, delete clip, delete practice, empty state. Stage A recording test still passes. Phones: pending.

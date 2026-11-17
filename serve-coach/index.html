@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-version="1.1.10">
+<html lang="en" data-version="1.2.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -300,6 +300,37 @@ svg{display:block}
 .rec-screen .btn-danger{background:transparent;color:#FFB4A8;box-shadow:inset 0 0 0 2px rgba(255,180,168,.6)}
 .rec-screen .btn-danger.armed{background:#E5484D;color:#fff;box-shadow:none}
 .rec-resume .row{display:flex;gap:8px;flex-wrap:wrap}
+.lib-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.lib-session{background:var(--surface);border-radius:18px;padding:14px;box-shadow:0 0 0 1.5px var(--rule);display:grid;gap:8px}
+.lib-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.lib-head h3{margin:0;font-size:1.1rem}
+.lib-tag{font-size:.75rem;font-weight:700;background:var(--ball);color:var(--ink);padding:3px 9px;border-radius:999px}
+.lib-sub{margin:0;font-size:.875rem;color:var(--ink-2)}
+.lib-clips{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.lib-clip{width:100%;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto auto;column-gap:10px;text-align:left;background:var(--surface-2);border:0;border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--ink);font:inherit;min-height:44px}
+.lib-clip b{grid-column:1}.lib-clip span{grid-column:1;font-size:.85rem;color:var(--ink-2)}
+.lib-clip .lib-go{grid-column:2;grid-row:1/3;align-self:center;font-weight:700;color:var(--ink)}
+.lib-del{justify-self:start;padding:8px 14px;font-size:.875rem;min-height:0;background:transparent;color:#B42318;box-shadow:inset 0 0 0 2px rgba(180,35,24,.5)}
+.lib-del.armed{background:#E5484D;color:#fff;box-shadow:none}
+.lib-storage{margin:10px 0 0;font-size:.85rem;color:var(--ink-2)}
+.lib-tip{margin:8px 0 0;font-size:.875rem;background:var(--surface-2);padding:10px 12px;border-radius:12px}
+.rp-title{font-size:1.4rem;margin:0}
+.rp-back{color:#fff}
+.rp-box{position:relative;background:#000;border-radius:14px;overflow:hidden}
+.rp-box video{display:block;width:100%;max-height:62vh;object-fit:contain;background:#000}
+.rp-box canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.rp-bar{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center}
+.rp-bar .btn{min-width:92px}
+.rp-bar input{width:100%;accent-color:var(--ball)}
+.rp-time{font-variant-numeric:tabular-nums;font-size:.875rem}
+.rp-row{display:flex;gap:8px;justify-content:center}
+.rp-row .btn{padding:8px 14px;font-size:.875rem;min-height:0}
+.rp-toggles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.rp-tog{min-height:44px;border-radius:999px;border:0;font-weight:700;background:rgba(255,255,255,.12);color:#fff;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.3);cursor:pointer}
+.rp-tog[aria-pressed="true"]{background:var(--ball);color:var(--ink);box-shadow:none}
+.rp-tog:disabled,.rp-screen button:disabled,.rp-screen input:disabled{opacity:.45}
+.rp-info{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:0;font-size:.9rem;background:rgba(255,255,255,.08);border-radius:14px;padding:12px}
+.rp-info dt{opacity:.75}.rp-info dd{margin:0;font-weight:600}
 
 .cam-msg{display:grid;gap:8px;justify-items:center;text-align:center}
 .cam-status{margin:0;font-size:.95rem;color:var(--muted)}
@@ -328,23 +359,25 @@ svg{display:block}
 <!-- version:start -->
 <script type="importmap">
 {"imports": {
-  "./js/app.js": "./js/app.js?v=1.1.10",
-  "./js/camera.js": "./js/camera.js?v=1.1.10",
-  "./js/pose.js": "./js/pose.js?v=1.1.10",
-  "./js/overlay.js": "./js/overlay.js?v=1.1.10",
-  "./js/debug.js": "./js/debug.js?v=1.1.10",
-  "./js/store.js": "./js/store.js?v=1.1.10",
-  "./js/preview.js": "./js/preview.js?v=1.1.10",
-  "./js/record.js": "./js/record.js?v=1.1.10",
-  "./js/tracking-quality.js": "./js/tracking-quality.js?v=1.1.10",
-  "./js/session.js": "./js/session.js?v=1.1.10",
-  "./js/serve-detector.js": "./js/serve-detector.js?v=1.1.10",
-  "./js/features.js": "./js/features.js?v=1.1.10",
-  "./js/recorder.js": "./js/recorder.js?v=1.1.10",
-  "./js/coach.js": "./js/coach.js?v=1.1.10"
+  "./js/app.js": "./js/app.js?v=1.2.0",
+  "./js/camera.js": "./js/camera.js?v=1.2.0",
+  "./js/pose.js": "./js/pose.js?v=1.2.0",
+  "./js/overlay.js": "./js/overlay.js?v=1.2.0",
+  "./js/debug.js": "./js/debug.js?v=1.2.0",
+  "./js/store.js": "./js/store.js?v=1.2.0",
+  "./js/preview.js": "./js/preview.js?v=1.2.0",
+  "./js/record.js": "./js/record.js?v=1.2.0",
+  "./js/tracking-quality.js": "./js/tracking-quality.js?v=1.2.0",
+  "./js/session.js": "./js/session.js?v=1.2.0",
+  "./js/serve-detector.js": "./js/serve-detector.js?v=1.2.0",
+  "./js/features.js": "./js/features.js?v=1.2.0",
+  "./js/recorder.js": "./js/recorder.js?v=1.2.0",
+  "./js/coach.js": "./js/coach.js?v=1.2.0",
+  "./js/replay.js": "./js/replay.js?v=1.2.0",
+  "./js/library.js": "./js/library.js?v=1.2.0"
 }}
 </script>
-<script type="module" src="js/app.js?v=1.1.10"></script>
+<script type="module" src="js/app.js?v=1.2.0"></script>
 <!-- version:end -->
 </head>
 <body>
@@ -513,10 +546,49 @@ svg{display:block}
   <div class="live-foot"><a class="link" href="#setup">Camera setup</a></div>
 </section>
 
+<!-- ================= REPLAY (MVP1 Stage B) ================= -->
+<section class="screen" id="replay" aria-labelledby="rpTitle" hidden>
+  <div class="court-screen rec-screen rp-screen">
+    <div class="live-top"><a class="link rp-back" href="#progress">‹ Video recordings</a></div>
+    <h1 class="rp-title" id="rpTitle">Replay</h1>
+    <div class="rp-box" id="rpBox">
+      <video id="rpVideo" playsinline muted preload="auto"></video>
+      <canvas id="rpCanvas"></canvas>
+    </div>
+    <p class="rec-msg" id="rpStatus" aria-live="polite"></p>
+    <div class="rp-bar">
+      <button class="btn btn-ball" type="button" id="rpPlay" disabled>Play</button>
+      <input type="range" id="rpSeek" min="0" max="1000" value="0" aria-label="Position in clip" disabled>
+      <span class="rp-time" id="rpTime">0:00 / 0:00</span>
+    </div>
+    <div class="rp-row">
+      <button class="btn btn-quiet" type="button" data-rpstep="-0.1" aria-label="Back a little" disabled>‹ 0.1 s</button>
+      <button class="btn btn-quiet" type="button" data-rpstep="0.1" aria-label="Forward a little" disabled>0.1 s ›</button>
+    </div>
+    <div class="rec-controls">
+      <div><span class="rec-label" id="rpSpeedL">Speed</span>
+        <div class="seg" role="group" aria-labelledby="rpSpeedL"><button type="button" data-rprate="1" aria-pressed="true" disabled>1×</button><button type="button" data-rprate="0.5" aria-pressed="false" disabled>½×</button><button type="button" data-rprate="0.25" aria-pressed="false" disabled>¼×</button></div></div>
+      <div><span class="rec-label">View</span>
+        <div class="rp-toggles"><button class="rp-tog" type="button" id="rpSkel" aria-pressed="true" disabled>Skeleton</button><button class="rp-tog" type="button" id="rpMirror" aria-pressed="false" disabled>Mirror</button></div></div>
+    </div>
+    <dl class="rp-info" id="rpInfo"></dl>
+    <button class="btn btn-danger btn-block" type="button" id="rpDelete" disabled>Delete clip</button>
+  </div>
+</section>
+
 <!-- ================= PROGRESS (includes AI coach) ================= -->
 <section class="screen" id="progress" aria-labelledby="progressH" hidden>
   <h1 id="progressH" style="font-size:2.6rem">Progress</h1>
-  <p class="notice"><b>Example content</b>The coaching, comparisons and sessions below are illustrations, not your data. Your own sessions replace them once recording is built.</p>
+  <!-- Video recordings (real data, MVP1) -->
+  <div class="block" aria-labelledby="videosH">
+    <h2 class="sec-h" id="videosH">Video recordings</h2>
+    <ul class="lib-list" id="libList"></ul>
+    <p class="empty" id="libEmpty">No recordings yet. Go to Record, start a practice and save a clip; it appears here.</p>
+    <p class="lib-storage" id="libStorage"></p>
+    <p class="lib-tip" id="libTip" hidden><b>Keep your recordings safe on iPhone:</b> tap Share › Add to Home Screen and open Serve Coach from there. Safari can clear a website’s saved videos if you don’t visit it for about a week.</p>
+  </div>
+
+  <p class="notice"><b>Example content</b>The coaching, comparisons and sessions below are illustrations, not your data. They arrive in a later version.</p>
 
   <!-- 1. AI coaching insights -->
   <div class="block" id="coach" aria-labelledby="coachSecH">
@@ -561,11 +633,6 @@ svg{display:block}
     </div>
   </div>
 
-  <!-- 2. Video recordings -->
-  <div class="block" aria-labelledby="videosH">
-    <h2 class="sec-h" id="videosH">Video recordings</h2>
-    <p class="empty" id="videosEmpty">No recordings yet. Recording isn’t built yet; your practice videos will appear here, stored only on this phone.</p>
-  </div>
 
   <!-- 3. Serve comparisons -->
   <div class="block" aria-labelledby="cmpH">

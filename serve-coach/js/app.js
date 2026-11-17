@@ -10,8 +10,8 @@
  * Demo-only behaviour still in place:
  *   - scripted picture checks in setup step 4
  *   - level bubble animation when no orientation sensor is available
- *   - example coaching, comparisons, sessions and answers in Progress (replaced by the
- *     Video Recordings library in MVP1 Stage B)
+ *   - example coaching, comparisons, sessions and answers in Progress (below the real
+ *     Video recordings library)
  */
 
 import { KEYS, prefs, recoverUnfinishedClips } from './store.js';
@@ -19,15 +19,17 @@ import { probeCamera, CAMERA_TEST_VARIANTS } from './camera.js';
 import { MIN_DRAW_SCORE } from './overlay.js';
 import { Preview } from './preview.js';
 import { initRecord } from './record.js';
+import { initReplay } from './replay.js';
+import { initLibrary } from './library.js';
 import { initDebug } from './debug.js';
 
 const $ = (id) => document.getElementById(id);
 
 /* ---------- routing ---------- */
-const VIEWS = ['home', 'setup', 'record', 'progress'];
+const VIEWS = ['home', 'setup', 'record', 'progress', 'replay'];
 let currentView = null;
 const ALIASES = { live: 'record', log: 'progress', coach: 'progress' };
-const TAB_FOR = { home: 'home', setup: 'record', record: 'record', progress: 'progress' };
+const TAB_FOR = { home: 'home', setup: 'record', record: 'record', progress: 'progress', replay: 'progress' };
 
 function route() {
   let h = (location.hash || '#home').slice(1);
@@ -37,10 +39,12 @@ function route() {
     h = 'setup';
     history.replaceState(null, '', '#setup');
   }
+  if (h === 'replay' && !replay.hasClip()) { h = 'progress'; history.replaceState(null, '', '#progress'); }
   const prev = currentView;
   currentView = h;
   if (h !== 'setup') stopPreview();
   if (prev === 'record' && h !== 'record') record.leave();
+  if (prev === 'replay' && h !== 'replay') replay.leave();
   VIEWS.forEach((v) => { $(v).hidden = v !== h; });
   const tab = TAB_FOR[h];
   document.querySelectorAll('.tab').forEach((t) => {
@@ -49,6 +53,8 @@ function route() {
   });
   if (h === 'setup') showStep(step);
   if (h === 'record' && prev !== 'record') record.enter();
+  if (h === 'progress') library.render();
+  if (h === 'replay') replay.enter();
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
@@ -245,7 +251,9 @@ function updatePill() {
 updatePill();
 
 /* ---------- record screen (record.js) ---------- */
-const record = initRecord({ debug });
+const replay = initReplay();
+const library = initLibrary({ openClip: (id) => replay.open(id) });
+const record = initRecord({ debug, openClip: (id) => replay.open(id, 'record') });
 const recordDebugTarget = { video: $('recVideo'), canvas: $('recCanvas'), overlay: record.preview.overlay };
 const _enter = record.enter;
 record.enter = () => { debugTarget = recordDebugTarget; return _enter(); };

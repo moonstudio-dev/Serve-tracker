@@ -246,3 +246,20 @@ export async function runModelCheck(videoEl) {
     paused = false;
   }
 }
+
+/**
+ * One pose on a still frame (used by replay to measure skeleton sync). Must not run while the
+ * live loop is running; replay only runs after the camera screens have stopped it.
+ */
+export async function estimateFrame(el) {
+  await loadMoveNet();
+  const saved = detector.minPoseScore;
+  detector.minPoseScore = -1;
+  try {
+    if (detector.reset) detector.reset();
+    return (await detector.estimatePoses(el))[0] || null;
+  } finally {
+    detector.minPoseScore = saved;
+    if (detector.reset) detector.reset();
+  }
+}

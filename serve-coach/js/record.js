@@ -20,7 +20,7 @@ const sideName = (s) => (s === 'ad' ? 'Ad' : s === 'deuce' ? 'Deuce' : '–');
 const camName = (c) => (c && c.facing === 'user' ? 'Front' : 'Rear');
 const when = (iso) => new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-export function initRecord({ debug }) {
+export function initRecord({ debug, openClip }) {
   const practice = new PracticeSession();
   const preview = new Preview(
     { video: $('recVideo'), canvas: $('recCanvas'), box: $('recBox'), status: $('recStatus'), retry: $('recRetry') },
@@ -115,7 +115,7 @@ export function initRecord({ debug }) {
   async function stopClip(reason = 'stopped', interrupted = false) {
     const saved = await practice.stopClip(reason, interrupted);
     if (saved) {
-      const text = `Clip ${saved.seq} saved · ${sideName(saved.side)} · ${fmtTime(saved.video.durationMs)} · ${fmtMB(saved.video.bytes)}`;
+      const text = `Clip ${saved.seq} saved on this device · ${sideName(saved.side)} · ${fmtTime(saved.video.durationMs)}. Replay it below or in Progress › Video recordings.`;
       if (!interrupted) msg(text, 'ok');
     }
     return saved;
@@ -133,7 +133,7 @@ export function initRecord({ debug }) {
     const clips = await store.getSessionClips(practice.session.id);
     await practice.endSession();
     const total = clips.reduce((n, c) => n + ((c.video && c.video.durationMs) || 0), 0);
-    msg(clips.length ? `Practice ended: ${clips.length} clip${clips.length === 1 ? '' : 's'}, ${fmtTime(total)} recorded. Saved on this device.` : 'Practice ended.', 'ok');
+    msg(clips.length ? `Practice ended: ${clips.length} clip${clips.length === 1 ? '' : 's'}, ${fmtTime(total)} recorded. Find it in Progress › Video recordings.` : 'Practice ended.', 'ok');
     renderClips();
   });
 
@@ -182,21 +182,12 @@ export function initRecord({ debug }) {
       li.appendChild(f);
     }
     const actions = document.createElement('div'); actions.className = 'clip-actions';
-    const play = document.createElement('button'); play.type = 'button'; play.className = 'btn btn-quiet'; play.textContent = 'Play';
+    const play = document.createElement('button'); play.type = 'button'; play.className = 'btn btn-quiet'; play.textContent = 'Replay';
     const del = document.createElement('button'); del.type = 'button'; del.className = 'btn btn-danger'; del.textContent = 'Delete';
     actions.append(play, del);
     li.appendChild(actions);
 
-    let player = null;
-    play.addEventListener('click', async () => {
-      if (player) { URL.revokeObjectURL(player.src); player.remove(); player = null; play.textContent = 'Play'; return; }
-      const { blob } = await store.getClipVideo(c);
-      player = document.createElement('video');
-      player.className = 'clip-play'; player.controls = true; player.playsInline = true; player.src = URL.createObjectURL(blob);
-      li.appendChild(player);
-      play.textContent = 'Close';
-      player.play().catch(() => {});
-    });
+    play.addEventListener('click', () => { if (practice.state === 'idle') openClip(c.id); });
     // Two-step delete: first tap arms it, second tap within 4 s deletes. No browser popup.
     let armTimer = null;
     del.addEventListener('click', async () => {
@@ -206,7 +197,6 @@ export function initRecord({ debug }) {
         return;
       }
       clearTimeout(armTimer);
-      if (player) URL.revokeObjectURL(player.src);
       await store.deleteClip(c);
       msg(`Clip ${c.seq} deleted.`, '');
       renderClips();
