@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-version="1.1.9">
+<html lang="en" data-version="1.1.10">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -266,6 +266,41 @@ svg{display:block}
 .sub-h{font-size:1.75rem}
 .compare h3{font-size:1.75rem}
 .block{display:grid;gap:14px;min-width:0}
+/* ---------- Record screen (MVP1 Stage A) ---------- */
+.mirror video,.mirror canvas{transform:scaleX(-1)}
+.rec-screen{gap:14px}
+.rec-session{font-size:.875rem;opacity:.85;text-align:right}
+.rec-phone{position:relative;width:min(240px,68%)}
+.rec-badge{position:absolute;top:16px;left:50%;transform:translateX(-50%);background:#E5484D;color:#fff;font-weight:700;font-size:.8125rem;padding:4px 10px;border-radius:999px;z-index:3;letter-spacing:.02em}
+.rec-badge::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:#fff;margin-right:6px;vertical-align:1px;animation:recblink 1s steps(2) infinite}
+@keyframes recblink{50%{opacity:.2}}
+.rec-controls{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rec-label{display:block;font-size:.8125rem;font-weight:700;opacity:.85;margin-bottom:6px}
+.rec-screen .seg{background:rgba(255,255,255,.12);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.3)}
+.rec-screen .seg button{color:#fff;border-color:transparent;background:transparent}
+.rec-screen .seg button[aria-pressed="true"]{background:var(--ball);color:var(--ink);border-color:var(--ball)}
+.rec-screen .seg button:disabled{opacity:.4}
+.rec-screen .cam-status{color:#DCE6F5}
+.rec-msg{margin:0;text-align:center;font-weight:700;font-size:.95rem}
+.rec-msg[data-kind=error]{color:#FFB4A8}
+.rec-msg[data-kind=ok]{color:#9FF0C0}
+.rec-h{font-size:1.25rem;margin:4px 0 6px}
+.rec-empty{margin:0;opacity:.8;font-size:.9rem}
+.clip-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.clip-list li{background:rgba(255,255,255,.08);border-radius:14px;padding:10px 12px;display:grid;gap:8px}
+.clip-top{display:flex;justify-content:space-between;gap:8px;align-items:baseline;flex-wrap:wrap}
+.clip-top b{font-size:1rem}
+.clip-meta{font-size:.85rem;opacity:.85}
+.clip-flag{font-size:.75rem;font-weight:700;color:var(--ball)}
+.clip-actions{display:flex;gap:8px;flex-wrap:wrap}
+.clip-actions .btn{padding:8px 14px;font-size:.875rem;min-height:0}
+.clip-play{width:100%;max-height:60vh;border-radius:10px;background:#000}
+.rec-resume{margin-bottom:12px}
+.rec-screen .btn-quiet{color:#fff;box-shadow:inset 0 0 0 2px rgba(255,255,255,.5)}
+.rec-screen .btn-danger{background:transparent;color:#FFB4A8;box-shadow:inset 0 0 0 2px rgba(255,180,168,.6)}
+.rec-screen .btn-danger.armed{background:#E5484D;color:#fff;box-shadow:none}
+.rec-resume .row{display:flex;gap:8px;flex-wrap:wrap}
+
 .cam-msg{display:grid;gap:8px;justify-items:center;text-align:center}
 .cam-status{margin:0;font-size:.95rem;color:var(--muted)}
 .cam-status[data-kind=error]{color:var(--warn);font-weight:700}
@@ -293,21 +328,23 @@ svg{display:block}
 <!-- version:start -->
 <script type="importmap">
 {"imports": {
-  "./js/app.js": "./js/app.js?v=1.1.9",
-  "./js/camera.js": "./js/camera.js?v=1.1.9",
-  "./js/pose.js": "./js/pose.js?v=1.1.9",
-  "./js/overlay.js": "./js/overlay.js?v=1.1.9",
-  "./js/debug.js": "./js/debug.js?v=1.1.9",
-  "./js/store.js": "./js/store.js?v=1.1.9",
-  "./js/tracking-quality.js": "./js/tracking-quality.js?v=1.1.9",
-  "./js/session.js": "./js/session.js?v=1.1.9",
-  "./js/serve-detector.js": "./js/serve-detector.js?v=1.1.9",
-  "./js/features.js": "./js/features.js?v=1.1.9",
-  "./js/recorder.js": "./js/recorder.js?v=1.1.9",
-  "./js/coach.js": "./js/coach.js?v=1.1.9"
+  "./js/app.js": "./js/app.js?v=1.1.10",
+  "./js/camera.js": "./js/camera.js?v=1.1.10",
+  "./js/pose.js": "./js/pose.js?v=1.1.10",
+  "./js/overlay.js": "./js/overlay.js?v=1.1.10",
+  "./js/debug.js": "./js/debug.js?v=1.1.10",
+  "./js/store.js": "./js/store.js?v=1.1.10",
+  "./js/preview.js": "./js/preview.js?v=1.1.10",
+  "./js/record.js": "./js/record.js?v=1.1.10",
+  "./js/tracking-quality.js": "./js/tracking-quality.js?v=1.1.10",
+  "./js/session.js": "./js/session.js?v=1.1.10",
+  "./js/serve-detector.js": "./js/serve-detector.js?v=1.1.10",
+  "./js/features.js": "./js/features.js?v=1.1.10",
+  "./js/recorder.js": "./js/recorder.js?v=1.1.10",
+  "./js/coach.js": "./js/coach.js?v=1.1.10"
 }}
 </script>
-<script type="module" src="js/app.js?v=1.1.9"></script>
+<script type="module" src="js/app.js?v=1.1.10"></script>
 <!-- version:end -->
 </head>
 <body>
@@ -408,7 +445,7 @@ svg{display:block}
   <!-- step 4 -->
   <div class="step screen" data-step="4" style="padding:0" hidden>
     <div class="step-h"><span class="n">Step 4 of 5</span><h2 style="font-size:2.6rem">Check the picture</h2><p>Walk to your serving spot and raise your tossing arm high, as if you’re about to toss.</p></div>
-    <div class="phone">
+    <div class="phone" id="setupBox">
       <video id="cameraPreview" autoplay playsinline muted></video>
       <canvas id="skeletonCanvas"></canvas>
     </div>
@@ -442,19 +479,36 @@ svg{display:block}
 
 <!-- ================= RECORD (was LIVE) ================= -->
 <section class="screen" id="record" aria-labelledby="recordH" hidden>
-  <h1 class="vh" id="recordH">Record a practice</h1>
-  <div class="court-screen">
+  <h1 class="vh" id="recordH">Record practice</h1>
+  <div class="card rec-resume" id="recResume" hidden>
+    <p id="recResumeText">You have an unfinished practice.</p>
+    <div class="row"><button class="btn btn-court" type="button" id="recContinue">Continue practice</button><button class="btn btn-quiet" type="button" id="recNew">Start new practice</button></div>
+  </div>
+  <div class="court-screen rec-screen">
     <div class="live-top">
-      <span class="track" id="track">Waiting to start</span>
-      <button class="voice" type="button" id="voice" aria-pressed="true">Voice on</button>
+      <span class="track" id="recTrack">Camera off</span>
+      <span class="rec-session" id="recSession">New practice</span>
     </div>
-    <p class="score" aria-label="Serve count"><span class="n" id="count">0</span><span class="of">/10</span></p>
-    <div class="cue" id="cue" aria-live="polite"><span class="cue-word" id="cueWord">Ready</span><span class="cue-tip" id="cueTip">Tap start, then walk to your mark.</span></div>
-    <div class="live-actions">
-      <button class="btn btn-ball btn-block" type="button" id="liveBtn">Start</button>
-      <button class="btn btn-quiet btn-block" type="button" id="endBtn">End session</button>
-      <p class="demo-note" id="demoNote">Demo: serves are counted with the button for now. Automatic detection comes in a later stage.</p>
+    <div class="phone rec-phone" id="recBox">
+      <video id="recVideo" autoplay playsinline muted></video>
+      <canvas id="recCanvas"></canvas>
+      <span class="rec-badge" id="recBadge" hidden>REC 0:00</span>
     </div>
+    <div class="cam-msg"><p class="cam-status" id="recStatus" role="status" hidden></p><button class="btn btn-quiet" type="button" id="recRetry" hidden>Try again</button></div>
+    <div class="rec-controls">
+      <div><span class="rec-label" id="recSideL">Court side</span>
+        <div class="seg" role="group" aria-labelledby="recSideL"><button type="button" data-recside="deuce" aria-pressed="true">Deuce</button><button type="button" data-recside="ad" aria-pressed="false">Ad</button></div></div>
+      <div><span class="rec-label" id="recCamL">Camera</span>
+        <div class="seg" role="group" aria-labelledby="recCamL"><button type="button" data-reccam="environment" aria-pressed="true">Rear</button><button type="button" data-reccam="user" aria-pressed="false">Front</button></div></div>
+    </div>
+    <button class="btn btn-ball btn-block" type="button" id="recBtn" disabled>Start recording</button>
+    <p class="rec-msg" id="recMsg" aria-live="polite" hidden></p>
+    <div class="rec-clips">
+      <h2 class="rec-h">This practice</h2>
+      <ul class="clip-list" id="recClips"></ul>
+      <p class="rec-empty" id="recEmpty">No clips yet. Press Start recording, practise, then Stop to save a clip. Change side or camera between clips.</p>
+    </div>
+    <button class="btn btn-quiet btn-block" type="button" id="recEnd">End practice</button>
   </div>
   <div class="live-foot"><a class="link" href="#setup">Camera setup</a></div>
 </section>

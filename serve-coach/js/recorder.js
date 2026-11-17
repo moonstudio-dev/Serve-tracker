@@ -1,7 +1,81 @@
 /*
- * recorder.js — MediaRecorder capture with browser-supported MIME type, saved to IndexedDB by session ID, replay.
+ * recorder.js — video recording of the live camera stream (MediaRecorder).
  *
- * Placeholder created in Stage 0. Implemented in Stage 4.
+ * Proven in the WP0 spike on iPhone Safari, Android Chrome and desktop Chrome:
+ *   - MP4 / H.264 is supported for recording on all three; WebM only as a fallback.
+ *   - ~2 Mbit/s, delivered in 2 s chunks, handed to the caller to save straight away
+ *     (keeps memory flat and means an interrupted clip keeps everything up to that point).
+ *   - Recording the same stream the tracker reads does not slow tracking.
+ *   - Screen Wake Lock is held while recording so the phone doesn't lock mid-clip.
  */
 
-export {};
+export const TIMESLICE_MS = 2000;
+export const BITRATE = 2_000_000;
+const MIME_CANDIDATES = [
+  'video/mp4;codecs=avc1.42E01F', 'video/mp4;codecs=avc1', 'video/mp4',
+  'video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm',
+];
+
+export function recordingSupported() {
+  return typeof MediaRecorder !== 'undefined';
+}
+export function pickMime() {
+  if (!recordingSupported()) return null;
+  return MIME_CANDIDATES.find((m) => MediaRecorder.isTypeSupported(m)) || '';
+}
+
+/**
+ * Records one clip from a MediaStream.
+ *   onChunk(blob, seq)  each ~2 s piece, in order
+ *   onStart(startPerf)  performance.now() when recording actually began (pose timestamps use this)
+ *   onError(error)
+ * stop() resolves after the last chunk has been delivered.
+ */
+export class ClipRecorder {
+  constructor(stream, { onChunk, onStart, onError } = {}) {
+    this.stream = stream;
+    this.onChunk = onChunk || (() => {});
+    this.onStart = onStart || (() => {});
+    this.onError = onError || (() => {});
+    this.seq = 0;
+    this.bytes = 0;
+    this.startPerf = 0;
+    this.wake = null;
+    this.mr = null;
+    this._stopped = null;
+  }
+
+  async start() {
+    const mime = pickMime();
+    if (mime === null) throw new Error('This browser cannot record video.');
+    try { if ('wakeLock' in navigator) this.wake = await navigator.wakeLock.request('screen'); } catch (e) { /* not critical */ }
+    const opts = mime ? { mimeType: mime, videoBitsPerSecond: BITRATE } : { videoBitsPerSecond: BITRATE };
+    const mr = new MediaRecorder(this.stream, opts);
+    this.mr = mr;
+    this.requestedMime = mime;
+    this._stopped = new Promise((resolve) => { mr.onstop = () => resolve(); });
+    const started = new Promise((resolve, reject) => {
+      mr.onstart = () => { this.startPerf = performance.now(); this.onStart(this.startPerf); resolve(); };
+      mr.onerror = (e) => { const err = e.error || new Error('Recording failed'); this.onError(err); reject(err); };
+    });
+    mr.ondataavailable = (e) => {
+      if (!e.data || !e.data.size) return;
+      this.bytes += e.data.size;
+      this.onChunk(e.data, this.seq++);
+    };
+    mr.start(TIMESLICE_MS);
+    await started;
+  }
+
+  get mime() { return (this.mr && this.mr.mimeType) || this.requestedMime || ''; }
+  get recording() { return !!this.mr && this.mr.state === 'recording'; }
+
+  /** Stop and wait for the final chunk. Safe to call more than once. */
+  async stop() {
+    if (this.mr && this.mr.state !== 'inactive') {
+      try { this.mr.stop(); } catch (e) { /* already stopping */ }
+    }
+    if (this._stopped) await this._stopped;
+    if (this.wake) { try { await this.wake.release(); } catch (e) { /* ignore */ } this.wake = null; }
+  }
+}

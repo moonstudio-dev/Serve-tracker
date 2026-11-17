@@ -18,7 +18,8 @@ export function debugEnabled() {
   return new URLSearchParams(location.search).has('debug');
 }
 
-export function initDebug({ video, canvas, overlay, minScore, cameraTest }) {
+/** getTarget() returns the active preview's { video, canvas, overlay } (setup or Record screen). */
+export function initDebug({ getTarget, minScore, cameraTest }) {
   if (!debugEnabled()) return { onPoses() {}, note() {} };
 
   const panel = document.createElement('div');
@@ -34,6 +35,7 @@ export function initDebug({ video, canvas, overlay, minScore, cameraTest }) {
   const events = [];
 
   function snapshot() {
+    const { video, canvas, overlay } = getTarget();
     const m = overlay.update(); // computes the mapping even before any pose is drawn
     const cam = getInfo(video);
     const pose = getPoseInfo();
@@ -101,7 +103,7 @@ export function initDebug({ video, canvas, overlay, minScore, cameraTest }) {
       checkBox.hidden = false;
       checkBox.textContent = 'Running model check on the current frame… stand in full view.';
       try {
-        const r = await runModelCheck(video);
+        const r = await runModelCheck(getTarget().video);
         lastCheck = r;
         checkBox.innerHTML = '';
         const row = document.createElement('div');
@@ -157,7 +159,7 @@ export function initDebug({ video, canvas, overlay, minScore, cameraTest }) {
   });
   function note(text) { events.push(new Date().toLocaleTimeString() + ' ' + text); }
   setInterval(render, 500);
-  render();
+  setTimeout(render, 0); // after the app has created its previews
 
   return {
     onPoses(poses) { lastPose = poses && poses[0] ? poses[0] : null; },

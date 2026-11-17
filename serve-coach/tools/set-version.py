@@ -8,7 +8,7 @@ Usage:  python3 tools/set-version.py 1.1.3
 """
 import pathlib, re, sys
 
-MODULES = ['app', 'camera', 'pose', 'overlay', 'debug', 'store', 'tracking-quality', 'session',
+MODULES = ['app', 'camera', 'pose', 'overlay', 'debug', 'store', 'preview', 'record', 'tracking-quality', 'session',
            'serve-detector', 'features', 'recorder', 'coach']
 version = sys.argv[1]
 page = pathlib.Path(__file__).resolve().parent.parent / 'index.html'

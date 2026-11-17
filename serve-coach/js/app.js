@@ -4,20 +4,21 @@
  * Ported from new-app/index.html. Routes: #home, #setup, #record, #progress.
  * Old prototype links still work: #live -> #record, #log and #coach -> #progress.
  *
- * Camera experience (Stage 1): the camera and tracking run only while setup step 4 is on
- * screen. Leaving the step or the screen, or hiding the page, stops both.
+ * Camera: runs only on setup step 4 and on the Record screen (each has its own Preview).
+ * Leaving the step or screen, or hiding the page, stops it. Record screen: record.js.
  *
- * Demo-only behaviour still in place (replaced in later stages, see README):
- *   - scripted picture checks in setup step 4 (Stage 2)
- *   - level bubble animation when no orientation sensor is available (Stage 2)
- *   - button-driven serve counting and scripted cues on Record (Stages 3 and 6)
- *   - example coaching, comparisons, sessions and answers in Progress (Stage 7)
+ * Demo-only behaviour still in place:
+ *   - scripted picture checks in setup step 4
+ *   - level bubble animation when no orientation sensor is available
+ *   - example coaching, comparisons, sessions and answers in Progress (replaced by the
+ *     Video Recordings library in MVP1 Stage B)
  */
 
-import { KEYS, prefs } from './store.js';
-import { startCamera, stopCamera, isCameraActive, isMobileDevice, probeCamera, CAMERA_TEST_VARIANTS } from './camera.js';
-import { loadMoveNet, startPoseLoop, stopPoseLoop } from './pose.js';
-import { SkeletonOverlay, MIN_DRAW_SCORE } from './overlay.js';
+import { KEYS, prefs, recoverUnfinishedClips } from './store.js';
+import { probeCamera, CAMERA_TEST_VARIANTS } from './camera.js';
+import { MIN_DRAW_SCORE } from './overlay.js';
+import { Preview } from './preview.js';
+import { initRecord } from './record.js';
 import { initDebug } from './debug.js';
 
 const $ = (id) => document.getElementById(id);
@@ -36,8 +37,10 @@ function route() {
     h = 'setup';
     history.replaceState(null, '', '#setup');
   }
+  const prev = currentView;
   currentView = h;
   if (h !== 'setup') stopPreview();
+  if (prev === 'record' && h !== 'record') record.leave();
   VIEWS.forEach((v) => { $(v).hidden = v !== h; });
   const tab = TAB_FOR[h];
   document.querySelectorAll('.tab').forEach((t) => {
@@ -45,12 +48,13 @@ function route() {
     else t.removeAttribute('aria-current');
   });
   if (h === 'setup') showStep(step);
+  if (h === 'record' && prev !== 'record') record.enter();
   window.scrollTo(0, 0);
 }
 window.addEventListener('hashchange', route);
 
 function say(text, force) {
-  if ($('voice').getAttribute('aria-pressed') !== 'true' && force !== 'force') return;
+  if (force !== 'force') return; // spoken only when explicitly requested
   try {
     const s = window.speechSynthesis;
     s.cancel();
@@ -151,79 +155,34 @@ function startLevel() {
   (function tick() { if (got) return; if (t < demo.length) { setBubble(demo[t]); t++; setTimeout(tick, 500); } })();
 }
 
-/* ---------- camera preview + MoveNet skeleton ---------- */
-const video = $('cameraPreview');
-const canvas = $('skeletonCanvas');
-const overlay = new SkeletonOverlay(canvas, video);
-const debug = initDebug({ video, canvas, overlay, minScore: MIN_DRAW_SCORE, cameraTest: runCameraTest });
+/* ---------- camera preview + MoveNet skeleton (setup step 4) ---------- */
+let debugTarget = null; // the preview the debug panel follows
+const debug = initDebug({ getTarget: () => debugTarget, minScore: MIN_DRAW_SCORE, cameraTest: runCameraTest });
+const setupPreview = new Preview(
+  { video: $('cameraPreview'), canvas: $('skeletonCanvas'), box: $('setupBox'), status: $('camStatus'), retry: $('camRetry') },
+  { debug },
+);
+debugTarget = { video: setupPreview.video, canvas: $('skeletonCanvas'), overlay: setupPreview.overlay };
 
 /** Debug only: stop the preview, try each camera request in turn, then restart the preview. */
 async function runCameraTest() {
+  const wasSetup = inCameraStep();
   stopPreview();
+  if (currentView === 'record') record.preview.stop(true);
   const results = [];
   for (const v of CAMERA_TEST_VARIANTS) results.push(await probeCamera(v));
-  if (inCameraStep()) startPreview();
+  if (wasSetup) startPreview();
+  if (currentView === 'record') record.preview.start();
   return results;
 }
-let previewToken = 0;   // changes whenever the preview is started or stopped
-let previewOn = false;
-
-function setCamStatus(text, kind, retry) {
-  const el = $('camStatus');
-  el.textContent = text || '';
-  el.dataset.kind = kind || '';
-  el.hidden = !text;
-  $('camRetry').hidden = !retry;
+function startPreview() {
+  debugTarget = { video: setupPreview.video, canvas: $('skeletonCanvas'), overlay: setupPreview.overlay };
+  return setupPreview.start(prefs.get(KEYS.camera) || 'environment');
 }
-
-async function startPreview() {
-  if (previewOn) return; // already running or starting: never open a second stream
-  previewOn = true;
-  const token = ++previewToken;
-  setCamStatus('Starting camera…');
-  const res = await startCamera(video);
-  if (token !== previewToken || res.code === 'Cancelled') return; // left while starting (camera.js discards the stream)
-  if (!res.ok) {
-    previewOn = false;
-    debug.note('camera error ' + res.code);
-    setCamStatus(res.message, 'error', true);
-    return;
-  }
-  debug.note('camera on ' + res.info.videoWidth + 'x' + res.info.videoHeight + ' facing=' + res.info.facingMode + ' (' + res.info.request + ')');
-  const frontOnly = isMobileDevice() && res.info.facingMode === 'user'; // desktops only have a front camera: nothing to explain
-  setCamStatus('Loading body tracking…');
-  try {
-    await loadMoveNet();
-  } catch (e) {
-    if (token !== previewToken) return;
-    setCamStatus('Body tracking couldn’t load. Check your connection, then try again.', 'error', true);
-    debug.note('model error ' + e.message);
-    return;
-  }
-  if (token !== previewToken) return;
-  startPoseLoop(video, (poses) => {
-    const pose = poses && poses[0];
-    overlay.draw(pose ? pose.keypoints : null);
-    debug.onPoses(poses);
-  });
-  setCamStatus(frontOnly ? 'No rear camera was available, so the front camera is in use. For practice, use the rear camera on a tripod.' : '', frontOnly ? 'warn' : '');
-}
-
-function stopPreview() {
-  previewToken++;
-  if (!previewOn && !isCameraActive()) return;
-  previewOn = false;
-  stopPoseLoop();
-  stopCamera(video);
-  overlay.clear();
-  setCamStatus('');
-  debug.note('camera off');
-}
-
+function stopPreview() { setupPreview.stop(); }
 function inCameraStep() {
   return currentView === 'setup' && step === 4;
 }
-$('camRetry').addEventListener('click', () => { if (inCameraStep()) startPreview(); });
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) stopPreview();
   else if (inCameraStep()) startPreview();
@@ -285,78 +244,11 @@ function updatePill() {
 }
 updatePill();
 
-/* ---------- record (demo: button-driven, replaced in Stages 3 and 6) ---------- */
-const seq = ['', '', '', 'knee', '', 'knee', '', 'knee', 'turn', 'knee'];
-const cues = {
-  '': ['Good', 'Just like your best serves.', 'good', 'Good'],
-  knee: ['Knee', 'Bend down, not forward.', 'warn', 'Knee. Bend down, not forward.'],
-  turn: ['Turn', 'Get more side-on.', 'warn', 'Turn. Get more side-on.'],
-};
-let served = 0;
-let liveState = 'idle';
-
-function cue(word, tip, k) {
-  const c = $('cue');
-  c.dataset.k = k || '';
-  $('cueWord').textContent = word;
-  $('cueTip').textContent = tip;
-  c.classList.remove('bounce');
-  void c.offsetWidth;
-  c.classList.add('bounce');
-}
-$('voice').addEventListener('click', function () {
-  const on = this.getAttribute('aria-pressed') !== 'true';
-  this.setAttribute('aria-pressed', String(on));
-  this.textContent = on ? 'Voice on' : 'Voice off';
-});
-$('liveBtn').addEventListener('click', function () {
-  const b = this;
-  if (liveState === 'idle') {
-    liveState = 'count';
-    b.disabled = true;
-    let n = 5;
-    $('track').textContent = 'Walk to your mark';
-    (function tick() {
-      if (n === 0) {
-        liveState = 'live';
-        b.disabled = false;
-        b.textContent = 'Next serve';
-        $('track').textContent = 'Tracking you';
-        $('track').classList.add('on');
-        cue('Go', 'Serve when you’re ready.', 'good');
-        say('Go');
-        return;
-      }
-      cue(String(n), 'Walk to your mark.', '');
-      n--;
-      setTimeout(tick, 800);
-    })();
-    return;
-  }
-  if (liveState === 'live') {
-    if (served >= seq.length) { endSession(); return; }
-    const c = cues[seq[served]];
-    served++;
-    $('count').textContent = served;
-    cue(c[0], c[1], c[2]);
-    say(c[3]);
-    if (served >= seq.length) b.textContent = 'See coaching';
-  }
-});
-function endSession() {
-  liveState = 'idle';
-  served = 0;
-  $('count').textContent = '0';
-  $('liveBtn').textContent = 'Start';
-  $('track').textContent = 'Waiting to start';
-  $('track').classList.remove('on');
-  cue('Ready', 'Tap start, then walk to your mark.', '');
-  location.hash = '#progress';
-  $('coachBody').hidden = true;
-  $('coachLoading').hidden = false;
-  setTimeout(() => { $('coachLoading').hidden = true; $('coachBody').hidden = false; }, 1000);
-}
-$('endBtn').addEventListener('click', endSession);
+/* ---------- record screen (record.js) ---------- */
+const record = initRecord({ debug });
+const recordDebugTarget = { video: $('recVideo'), canvas: $('recCanvas'), overlay: record.preview.overlay };
+const _enter = record.enter;
+record.enter = () => { debugTarget = recordDebugTarget; return _enter(); };
 
 /* ---------- progress: AI coaching insights (example content) ---------- */
 $('hearBtn').addEventListener('click', () => {
@@ -435,4 +327,5 @@ $('noteForm').addEventListener('submit', (e) => {
   drawNotes();
 });
 
+recoverUnfinishedClips().catch(() => {}); // clips left 'recording' by a crash/closed tab → kept as interrupted
 route();

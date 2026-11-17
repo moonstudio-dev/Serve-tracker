@@ -89,7 +89,8 @@ export function loadMoveNet() {
 
 /**
  * Run pose estimation on videoEl until stopPoseLoop() is called.
- * onPoses(poses) gets MoveNet poses with keypoints in the video's own pixels.
+ * onPoses(poses, tGrab) gets MoveNet poses with keypoints in the video's own pixels, and
+ * tGrab = performance.now() when the frame was taken (used to timestamp recorded movement).
  */
 export function startPoseLoop(videoEl, onPoses) {
   stopPoseLoop();
@@ -105,13 +106,14 @@ export function startPoseLoop(videoEl, onPoses) {
     const playing = videoEl.readyState >= 2 && !videoEl.paused && videoEl.videoWidth > 0;
     if (playing && !paused) {
       try {
+        const tGrab = performance.now();
         inflight = detector.estimatePoses(videoEl);
         const poses = await inflight;
         inflight = null;
         if (id !== loopId) return; // stopped while estimating
         stats.frames++;
         windowFrames++;
-        onPoses(poses);
+        onPoses(poses, tGrab);
       } catch (error) {
         inflight = null;
         stats.lastError = String(error && error.message || error);

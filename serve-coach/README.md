@@ -217,3 +217,26 @@ Test page: `serve-coach/spike/` (not part of the player journey; own IndexedDB d
 - `camera.js` gained an optional `facing` parameter (default rear; app behaviour unchanged).
 
 Headless Chrome 153 (synthetic moving marker, stand-in tracker): MP4 avc1 chosen; 13 s clip saved in 4 chunks + 782 pose frames; survived reload byte-for-byte; duration reported correctly (13.07 s); 4/4 seeks landed exactly in 4–25 ms; sync offset 0 to −20 ms; delete OK. Phone results pending.
+
+## MVP1 Stage A — recording on the Record screen (v1.1.10)
+
+**What it does:** live camera + skeleton on Record → Start recording → Stop and save clip → change court side (Deuce/Ad) or camera (Rear/Front) → next clip → End practice. Clips belong to the open practice session. A reload offers *Continue practice* / *Start new practice*. Each clip's video plays back on the Record screen (plain playback; replay with skeleton is Stage B). Two-tap delete.
+
+**Modules**
+- `store.js` — IndexedDB `serve-coach` v1: `sessions`, `clips` (index `sessionId`, `status`), `chunks` [clipId, seq], `poses` [clipId, seq]. UUIDs, `schemaVersion`, `ownerId`, `syncState`, `deletedAt`, `uploadConsent`. Functions only; UI never touches IndexedDB directly.
+- `recorder.js` — `ClipRecorder`: MP4/H.264 preferred, WebM fallback, 2 Mbit/s, 2 s chunks, Screen Wake Lock.
+- `session.js` — `PracticeSession`: session create/continue/end, clip start/stop, chunk and pose persistence as they arrive, storage checks, interruption handling.
+- `preview.js` — reusable camera + skeleton preview (setup step 4 and Record); front camera preview mirrored.
+- `record.js` — Record screen.
+- `pose.js` — callback now also receives the frame grab time (pose timestamps).
+
+**Clip metadata:** side, camera {facing, label}, video {mime, width, height, bitrate, bytes, chunks, durationMs}, poses {frames, fps, format, model, backend, inputMode: full}, status (saved / interrupted / interrupted-empty), stopReason, sync {offsetMs: null — filled in Stage B}.
+**Movement data:** per frame `t` = ms since clip start; `kp` = 17 × [x/width, y/height, score] (MoveNet order) or `null`.
+
+**Rules**
+- No time limit on clips. Storage safety only: refuse to start below 200 MB free (warn below 500 MB); stop and save a running clip below 100 MB or on a storage-full error.
+- Camera and side locked while recording; camera switching is debounced.
+- Leaving the Record screen saves the running clip. Phone locked / app switched: clip stopped and saved, marked *interrupted*, message on return. Crash or closed tab: on next launch the clip is kept and marked *interrupted*; Chrome writes MP4 data every few seconds, so the last few seconds can be lost; a clip with no playable video is marked *interrupted · no video saved*.
+- Persistent storage requested on first recording (granted on Android, usually not on iPhone).
+
+**Tested (headless Chrome, synthetic camera):** multiple clips with different sides/cameras in one session; controls locked while recording; reload → continue; background interruption; leave screen mid-clip; crash mid-clip → recovered; playback; two-tap delete; end practice; stored records checked (metadata, chunks, 865 pose frames). Setup, camera-selection and navigation regressions pass. Phones: pending.
