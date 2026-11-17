@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-version="1.2.1">
+<html lang="en" data-version="1.3.0">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -300,6 +300,12 @@ svg{display:block}
 .rec-screen .btn-danger{background:transparent;color:#FFB4A8;box-shadow:inset 0 0 0 2px rgba(255,180,168,.6)}
 .rec-screen .btn-danger.armed{background:#E5484D;color:#fff;box-shadow:none}
 .rec-resume .row{display:flex;gap:8px;flex-wrap:wrap}
+.p-stepper{display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:12px;margin-top:12px}
+.p-step{width:52px;height:52px;border-radius:50%;border:0;background:var(--surface-2);color:var(--ink);font-size:1.6rem;font-weight:700;cursor:pointer;box-shadow:0 0 0 1.5px var(--rule)}
+.p-step:disabled{opacity:.4}
+#pTargetN{font-size:2rem;font-weight:800;min-width:2ch;text-align:center}
+.p-unit{color:var(--ink-2);font-size:.9rem}
+.rec-plan{margin:0;font-size:.9rem;background:rgba(255,255,255,.1);border-radius:12px;padding:8px 12px;text-align:center}
 .lib-list{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 .lib-session{background:var(--surface);border-radius:18px;padding:14px;box-shadow:0 0 0 1.5px var(--rule);display:grid;gap:8px}
 .lib-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -359,25 +365,26 @@ svg{display:block}
 <!-- version:start -->
 <script type="importmap">
 {"imports": {
-  "./js/app.js": "./js/app.js?v=1.2.1",
-  "./js/camera.js": "./js/camera.js?v=1.2.1",
-  "./js/pose.js": "./js/pose.js?v=1.2.1",
-  "./js/overlay.js": "./js/overlay.js?v=1.2.1",
-  "./js/debug.js": "./js/debug.js?v=1.2.1",
-  "./js/store.js": "./js/store.js?v=1.2.1",
-  "./js/preview.js": "./js/preview.js?v=1.2.1",
-  "./js/record.js": "./js/record.js?v=1.2.1",
-  "./js/tracking-quality.js": "./js/tracking-quality.js?v=1.2.1",
-  "./js/session.js": "./js/session.js?v=1.2.1",
-  "./js/serve-detector.js": "./js/serve-detector.js?v=1.2.1",
-  "./js/features.js": "./js/features.js?v=1.2.1",
-  "./js/recorder.js": "./js/recorder.js?v=1.2.1",
-  "./js/coach.js": "./js/coach.js?v=1.2.1",
-  "./js/replay.js": "./js/replay.js?v=1.2.1",
-  "./js/library.js": "./js/library.js?v=1.2.1"
+  "./js/app.js": "./js/app.js?v=1.3.0",
+  "./js/camera.js": "./js/camera.js?v=1.3.0",
+  "./js/pose.js": "./js/pose.js?v=1.3.0",
+  "./js/overlay.js": "./js/overlay.js?v=1.3.0",
+  "./js/debug.js": "./js/debug.js?v=1.3.0",
+  "./js/store.js": "./js/store.js?v=1.3.0",
+  "./js/preview.js": "./js/preview.js?v=1.3.0",
+  "./js/record.js": "./js/record.js?v=1.3.0",
+  "./js/tracking-quality.js": "./js/tracking-quality.js?v=1.3.0",
+  "./js/session.js": "./js/session.js?v=1.3.0",
+  "./js/serve-detector.js": "./js/serve-detector.js?v=1.3.0",
+  "./js/features.js": "./js/features.js?v=1.3.0",
+  "./js/recorder.js": "./js/recorder.js?v=1.3.0",
+  "./js/coach.js": "./js/coach.js?v=1.3.0",
+  "./js/replay.js": "./js/replay.js?v=1.3.0",
+  "./js/library.js": "./js/library.js?v=1.3.0",
+  "./js/practice.js": "./js/practice.js?v=1.3.0"
 }}
 </script>
-<script type="module" src="js/app.js?v=1.2.1"></script>
+<script type="module" src="js/app.js?v=1.3.0"></script>
 <!-- version:end -->
 </head>
 <body>
@@ -393,10 +400,10 @@ svg{display:block}
 <!-- ================= HOME ================= -->
 <section class="screen" id="home" aria-labelledby="homeH" hidden>
   <div class="step-h"><span class="n">Serve Coach</span><h1 id="homeH" style="font-size:2.6rem">Ready to serve?</h1><p>Set up your phone, practise your serve, and see what your footage shows.</p></div>
-  <a class="btn btn-ball btn-block" href="#record">Start a practice</a>
+  <a class="btn btn-ball btn-block" href="#practice">Start a practice</a>
   <div class="card">
     <h2 class="sec-h">Recent practice</h2>
-    <p class="empty" id="homeRecent">No practice sessions yet. Your sessions will show here once recording is built.</p>
+    <p class="empty" id="homeRecent">No practice sessions yet.</p>
   </div>
   <div class="card">
     <h2 class="sec-h">Latest coaching insight</h2>
@@ -407,6 +414,29 @@ svg{display:block}
 </section>
 
 <!-- ================= SETUP ================= -->
+<!-- ================= PRACTICE SETUP (MVP1 Stage C) ================= -->
+<section class="screen" id="practice" aria-labelledby="practiceH" hidden>
+  <div class="step-h"><span class="n">New practice</span><h1 id="practiceH" style="font-size:2.6rem">Plan your practice</h1><p>Choose where you’ll serve from. You can still switch sides while you record.</p></div>
+  <div class="card" id="pResume" hidden>
+    <p id="pResumeText"></p>
+    <button class="btn btn-quiet" type="button" id="pContinue">Continue that practice</button>
+  </div>
+  <div><span class="field-label" id="pSidesL">Sides</span>
+    <div class="seg" role="group" aria-labelledby="pSidesL"><button type="button" data-psides="both" aria-pressed="true">Both</button><button type="button" data-psides="deuce" aria-pressed="false">Deuce only</button><button type="button" data-psides="ad" aria-pressed="false">Ad only</button></div>
+    <p class="kicker" style="margin-top:8px">Deuce is the right half as you face the net.</p></div>
+  <div><span class="field-label" id="pTargetL">Serve target</span>
+    <div class="seg" role="group" aria-labelledby="pTargetL"><button type="button" data-ptarget="on" aria-pressed="true">Set a target</button><button type="button" data-ptarget="off" aria-pressed="false">No target</button></div>
+    <div class="p-stepper" id="pStepper">
+      <button type="button" class="p-step" id="pMinus" aria-label="Fewer serves">−</button>
+      <output id="pTargetN" aria-live="polite">10</output>
+      <span class="p-unit">serves per side (up to 10)</span>
+      <button type="button" class="p-step" id="pPlus" aria-label="More serves">+</button>
+    </div></div>
+  <p class="callout" id="pSummary">Aim for 10 on Deuce and 10 on Ad (20 in total).</p>
+  <p class="kicker">A target is a guide, not a limit. Recording doesn’t stop when you reach it, and the app doesn’t count serves yet.</p>
+  <button class="btn btn-ball btn-block" type="button" id="pStart">Start practice</button>
+</section>
+
 <section class="screen" id="setup" aria-labelledby="setupH" hidden>
   <h1 class="vh" id="setupH">Camera setup</h1>
   <div class="steps" aria-hidden="true" id="stepBar"><span></span><span></span><span></span><span></span><span></span></div>
@@ -416,7 +446,8 @@ svg{display:block}
     <div class="step-h"><span class="n">Step 1 of 5</span><h2 class="h1like" style="font-size:2.6rem">Who’s serving?</h2><p>This decides which side of the court your camera goes on.</p></div>
     <div><span class="field-label" id="handL">You serve with your</span>
       <div class="seg" role="group" aria-labelledby="handL"><button type="button" data-hand="R" aria-pressed="true">Right hand</button><button type="button" data-hand="L" aria-pressed="false">Left hand</button></div></div>
-    <div><span class="field-label" id="sideL">You’re practising from the</span>
+    <p class="callout" id="sidePlanned" hidden></p>
+    <div id="sideField"><span class="field-label" id="sideL">You’re practising from the</span>
       <div class="seg" role="group" aria-labelledby="sideL"><button type="button" data-side="deuce" aria-pressed="true">Deuce side</button><button type="button" data-side="ad" aria-pressed="false">Ad side</button></div>
       <p class="kicker" style="margin-top:8px">Deuce is the right half as you face the net.</p></div>
     <div class="callout">You’ll need a tripod or stand that reaches hip height. A cheap one is fine; weigh it down with your bag if it’s windy.</div>
@@ -522,6 +553,7 @@ svg{display:block}
       <span class="track" id="recTrack">Camera off</span>
       <span class="rec-session" id="recSession">New practice</span>
     </div>
+    <p class="rec-plan" id="recPlan" hidden></p>
     <div class="phone rec-phone" id="recBox">
       <video id="recVideo" autoplay playsinline muted></video>
       <canvas id="recCanvas"></canvas>

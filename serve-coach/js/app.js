@@ -21,15 +21,17 @@ import { Preview } from './preview.js';
 import { initRecord } from './record.js';
 import { initReplay } from './replay.js';
 import { initLibrary } from './library.js';
+import { initPractice, planText } from './practice.js';
+import * as store from './store.js';
 import { initDebug } from './debug.js';
 
 const $ = (id) => document.getElementById(id);
 
 /* ---------- routing ---------- */
-const VIEWS = ['home', 'setup', 'record', 'progress', 'replay'];
+const VIEWS = ['home', 'practice', 'setup', 'record', 'progress', 'replay'];
 let currentView = null;
 const ALIASES = { live: 'record', log: 'progress', coach: 'progress' };
-const TAB_FOR = { home: 'home', setup: 'record', record: 'record', progress: 'progress', replay: 'progress' };
+const TAB_FOR = { home: 'home', practice: 'record', setup: 'record', record: 'record', progress: 'progress', replay: 'progress' };
 
 function route() {
   let h = (location.hash || '#home').slice(1);
@@ -54,6 +56,8 @@ function route() {
   if (h === 'setup') showStep(step);
   if (h === 'record' && prev !== 'record') record.enter();
   if (h === 'progress') library.render();
+  if (h === 'practice') practice.enter();
+  if (h === 'home') renderHome();
   if (h === 'replay') replay.enter();
   window.scrollTo(0, 0);
 }
@@ -106,8 +110,14 @@ function layout() {
 }
 layout();
 
+let plannedSide = null; // side chosen in Practice setup; camera setup then doesn't ask again
 function showStep(n) {
   step = n;
+  if (n === 1) {
+    $('sideField').hidden = !!plannedSide;
+    $('sidePlanned').hidden = !plannedSide;
+    if (plannedSide) $('sidePlanned').textContent = `You’re starting on the ${plannedSide === 'deuce' ? 'Deuce' : 'Ad'} side (from your practice plan). You can switch sides on the Record screen.`;
+  }
   document.querySelectorAll('.step').forEach((s) => { s.hidden = +s.dataset.step !== n; });
   document.querySelectorAll('#stepBar span').forEach((s, i) => { s.className = i < n - 1 ? 'on' : (i === n - 1 ? 'now' : ''); });
   $('backBtn').hidden = n === 1;
@@ -254,6 +264,24 @@ updatePill();
 const replay = initReplay();
 const library = initLibrary({ openClip: (id) => replay.open(id) });
 const record = initRecord({ debug, openClip: (id) => replay.open(id, 'record') });
+const practice = initPractice({
+  onStart(session, firstSide) {
+    plannedSide = firstSide;
+    cfg.side = firstSide; pick('side', cfg.side); layout();
+    record.setSide(firstSide);
+    location.hash = prefs.get(KEYS.spot) ? '#record' : '#setup';
+  },
+});
+
+/* ---------- home: latest practice ---------- */
+async function renderHome() {
+  const s = (await store.listSessions()).find((x) => x.clips.some((c) => c.status !== 'recording'));
+  const el = $('homeRecent');
+  if (!s) { el.textContent = 'No practice sessions yet.'; return; }
+  const clips = s.clips.filter((c) => c.status !== 'recording');
+  const secs = Math.round(clips.reduce((n, c) => n + ((c.video && c.video.durationMs) || 0), 0) / 1000);
+  el.textContent = `${new Date(s.createdAt).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} · ${clips.length} clip${clips.length === 1 ? '' : 's'} · ${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}${s.plan ? ' · ' + planText(s.plan) : ''}${s.status === 'active' ? ' · in progress' : ''}`;
+}
 const recordDebugTarget = { video: $('recVideo'), canvas: $('recCanvas'), overlay: record.preview.overlay };
 const _enter = record.enter;
 record.enter = () => { debugTarget = recordDebugTarget; return _enter(); };

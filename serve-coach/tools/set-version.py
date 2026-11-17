@@ -9,7 +9,7 @@ Usage:  python3 tools/set-version.py 1.1.3
 import pathlib, re, sys
 
 MODULES = ['app', 'camera', 'pose', 'overlay', 'debug', 'store', 'preview', 'record', 'tracking-quality', 'session',
-           'serve-detector', 'features', 'recorder', 'coach', 'replay', 'library']
+           'serve-detector', 'features', 'recorder', 'coach', 'replay', 'library', 'practice']
 version = sys.argv[1]
 page = pathlib.Path(__file__).resolve().parent.parent / 'index.html'
 html = page.read_text(encoding='utf-8')

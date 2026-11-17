@@ -12,6 +12,7 @@ import { KEYS, prefs } from './store.js';
 import { Preview } from './preview.js';
 import { PracticeSession, StorageLowError } from './session.js';
 import { getPoseInfo } from './pose.js';
+import { planText, planSides } from './practice.js';
 
 const $ = (id) => document.getElementById(id);
 const fmtTime = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -159,6 +160,7 @@ export function initRecord({ debug, openClip }) {
     const token = ++renderToken;   // only the latest refresh draws (avoids doubled lists)
     const s = practice.session;
     $('recSession').textContent = s ? `Practice · started ${when(s.createdAt)}` : 'New practice';
+    renderPlan(s, s ? await store.getSessionClips(s.id) : []);
     const ul = $('recClips');
     ul.innerHTML = '';
     const clips = s ? await store.getSessionClips(s.id) : [];
@@ -166,6 +168,21 @@ export function initRecord({ debug, openClip }) {
     ul.innerHTML = '';
     $('recEmpty').hidden = clips.length > 0;
     clips.filter((c) => c.status !== 'recording').forEach((c) => ul.appendChild(clipItem(c)));
+  }
+
+  function renderPlan(s, clips) {
+    const el = $('recPlan');
+    if (!s || !s.plan) { el.hidden = true; return; }
+    const count = (side) => clips.filter((c) => c.side === side && c.status !== 'recording').length;
+    const shown = planSides(s.plan);
+    ['deuce', 'ad'].forEach((sd) => { if (!shown.includes(sd) && count(sd)) shown.push(sd); });
+    const parts = shown.map((sd) => {
+      const t = s.plan.targets && s.plan.targets[sd];
+      const n = count(sd);
+      return `${sideName(sd)}: ${n} clip${n === 1 ? '' : 's'}${t ? ` · aim ${t} serves` : ''}`;
+    });
+    el.textContent = `Plan: ${planText(s.plan)}. ${parts.join(' | ')}`;
+    el.hidden = false;
   }
 
   function clipItem(c) {
@@ -206,8 +223,11 @@ export function initRecord({ debug, openClip }) {
 
   /* ---------- continue an unfinished practice ---------- */
   async function offerResume() {
-    if (practice.session) { $('recResume').hidden = true; return; }
     const s = await store.getActiveSession();
+    if (practice.session && practice.state === 'idle' && (!s || s.id !== practice.session.id)) {
+      practice.session = null; // ended or replaced elsewhere (e.g. a new plan in Practice setup)
+    }
+    if (practice.session) { $('recResume').hidden = true; return; }
     if (!s) { $('recResume').hidden = true; return; }
     const clips = await store.getSessionClips(s.id);
     if (!clips.length) { practice.use(s); $('recResume').hidden = true; return; } // empty: just reuse it
@@ -223,6 +243,11 @@ export function initRecord({ debug, openClip }) {
     paintChoices();
     updateButton();
     await offerResume();
+    // No practice yet: plan one first (Home → Practice setup → Camera setup → Record).
+    if (!practice.session && $('recResume').hidden && !(await store.getActiveSession())) {
+      location.hash = '#practice';
+      return;
+    }
     renderClips();
     if (interruptedWhileAway) { msg('Recording stopped when the app went into the background. The clip was saved.', 'error'); interruptedWhileAway = false; }
     await preview.start(facing);
@@ -252,5 +277,7 @@ export function initRecord({ debug, openClip }) {
   // Keep the button state in step with the camera becoming ready.
   setInterval(() => { if (active && practice.state === 'idle') updateButton(); }, 500);
 
-  return { enter, leave, preview, practice };
+  function setSide(sd) { if (practice.state === 'idle') { side = sd; prefs.set(KEYS.cfg, { ...(prefs.get(KEYS.cfg) || {}), side }); paintChoices(); } }
+
+  return { enter, leave, preview, practice, setSide };
 }

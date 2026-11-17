@@ -250,3 +250,15 @@ Headless Chrome 153 (synthetic moving marker, stand-in tracker): MP4 avc1 chosen
 **Skeleton sync:** drawn per video frame with `requestVideoFrameCallback` (rAF fallback) using the frame's media time + the clip's offset. First replay of a clip measures its offset (10 sampled frames re-run through MoveNet via `pose.estimateFrame`, matched to saved keypoints across ±1500 ms in 20 ms steps) and saves it as `clip.sync` {offsetMs, method: measured|default, samples, errors, measuredAt}. If the clip has too little tracked movement or the result is at the search edge, a per-browser default is used and saved (iPhone 0, Android Chrome −350 ms, desktop Chrome −440 ms, from WP0). If body tracking can't load, the default is used but not saved, so it is measured next time.
 
 **Tested (headless Chrome, synthetic camera + test detector):** replay opens from Record and library, alignment measured and saved, not re-measured on reopen, skeleton drawn while playing and after seeking, speed, frame steps, skeleton toggle, mirror flips picture not controls, front-camera clip opens mirrored, reload on Replay returns to Progress, delete clip, delete practice, empty state. Stage A recording test still passes. Phones: pending.
+
+## MVP1 Stage C — Practice setup (v1.3.0)
+
+**Journey:** Home › *Start a practice* › **Practice setup** (`#practice`, `practice.js`) › Camera setup (only if no spot is saved) › Record. The Record tab also opens Practice setup when no practice is open.
+
+- Sides: Both / Deuce only / Ad only. Optional target 1–10 serves per selected side (Both = target on Deuce + target on Ad). Stored on the session: `plan = { sides, targetPerSide, targets: { deuce, ad } }`.
+- Targets are guidance only: nothing stops at the target and serves aren't counted (no serve detection in MVP1). The Record screen shows the plan and clips recorded per side; a side outside the plan still records and is shown.
+- Camera setup no longer asks for the court side when a plan sets it (shows the starting side instead). Record starts on the plan's first side; switching sides between clips stays available.
+- Starting a new plan ends any unfinished practice (its clips stay saved); Practice setup offers *Continue that practice* first.
+- Plan shown in Progress › Video recordings and in Home › Recent practice.
+
+**Tested (headless Chrome):** plan choices and limits (1–10), no-target option, no spot → camera setup without side question, Record starts on planned side, plan line updates per side, new plan replaces unfinished practice, Record tab redirects to Practice setup after ending a practice, Home and library show the plan. Stage A and B tests pass.
