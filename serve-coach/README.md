@@ -192,3 +192,6 @@ Camera test, same wall, phone still, on both phones:
 - iPhone, v1.1.5, full body at distance: **17/17 keypoints ≥ 0.3 incl. both ankles (0.46–0.53), 30 fps** — full-body tracking passes on iPhone.
 - But it ran at 480×640 instead of 720×1280: the safety net checked `track.getSettings()` immediately after opening. iPhone Safari reports the sensor's 1280×720 at that moment and only rotates to 720×1280 once the picture plays, so the safety net wrongly fell back to the no-size request.
 - Fix (v1.1.6): the safety net now judges the shape of the playing picture after a 0.6 s settle. Simulated devices: iPhone-like → 720×1280, no fallback; always-landscape phone → fallback; desktop → 1280×720.
+
+### iPhone, v1.1.6 (17 Nov, 16:36): passed
+720×1280 portrait from the first request (no fallback), rear "Back Dual Wide Camera", WebGL, **17/17 keypoints ≥ 0.3** (ankles 0.41 / 0.69, knees 0.58 / 0.73), skeleton aligned head to ankles (screenshot). 17–25 fps at 720×1280 vs ~30 fps at 480×640: sharper picture costs some speed; fine for setup, to be reviewed for serve detection.
