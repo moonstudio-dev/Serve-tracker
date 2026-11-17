@@ -22,4 +22,16 @@ if n == 0:
 assert n == 1, 'version block not found'
 html = re.sub(r'<html lang="en"[^>]*>', f'<html lang="en" data-version="{version}">', html, count=1)
 page.write_text(html, encoding='utf-8')
+
+# Spike test page (WP0): same versioned module URLs, relative to spike/.
+spike = page.parent / 'spike' / 'index.html'
+if spike.exists():
+    sh = spike.read_text(encoding='utf-8')
+    entries = ',\n'.join(f'  "../js/{m}.js": "../js/{m}.js?v={version}"' for m in MODULES)
+    sblock = (f'<!-- version:start -->\n<script type="importmap">\n{{"imports": {{\n{entries}\n}}}}\n</script>\n'
+              f'<script type="module" src="recording.js?v={version}"></script>\n<!-- version:end -->')
+    sh, n2 = re.subn(r'<!-- version:start -->.*?<!-- version:end -->', sblock, sh, flags=re.S)
+    assert n2 == 1, 'spike version block not found'
+    sh = re.sub(r'<html lang="en"[^>]*>', f'<html lang="en" data-version="{version}">', sh, count=1)
+    spike.write_text(sh, encoding='utf-8')
 print('set version', version)

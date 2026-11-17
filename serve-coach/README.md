@@ -206,3 +206,14 @@ Camera test, same wall, phone still, on both phones:
 | Tracking speed | – | 17–25 fps (WebGL) | ~10 fps (WASM) |
 
 Carried into later stages: Android tracking speed (~10 fps) for serve detection (Stage 6); Safari asks for camera permission after every page reload unless allowed in Website Settings (setup copy, Stage 2); the debug panel stays available behind `?debug=1`.
+
+## MVP1 — WP0 recording spike (v1.1.7)
+Test page: `serve-coach/spike/` (not part of the player journey; own IndexedDB database `serve-coach-spike`).
+- Records video (MediaRecorder, MP4/H.264 preferred, ~2 Mbit/s, 2 s chunks) while MoveNet tracks the same camera stream; up to 60 s, or Stop.
+- Saves chunks and timestamped keypoints (ms since recording start; x/y normalised to the frame; raw scores) to IndexedDB as it records, plus clip metadata and measurements.
+- Lists saved clips after reload; replays with the skeleton synchronised by `requestVideoFrameCallback`; skeleton toggle; 1× / 0.5× / 0.25×; mirror toggle; delete with confirmation.
+- Measurements: format support, actual MIME, resolution, size/bitrate, duration and seek test, FPS before/while recording, chunk write time, persistent storage, wake lock, orientation after replay, and a sync-offset estimate (re-detects replay frames and matches saved keypoints across ±400 ms).
+- Options: rear/front camera (front preview mirrored; recording and replay unmirrored by default), full or half-size model input (Android performance experiment).
+- `camera.js` gained an optional `facing` parameter (default rear; app behaviour unchanged).
+
+Headless Chrome 153 (synthetic moving marker, stand-in tracker): MP4 avc1 chosen; 13 s clip saved in 4 chunks + 782 pose frames; survived reload byte-for-byte; duration reported correctly (13.07 s); 4/4 seeks landed exactly in 4–25 ms; sync offset 0 to −20 ms; delete OK. Phone results pending.

@@ -32,10 +32,11 @@ function size() {
 }
 
 /** Attempts in order. Each is tried only if the previous one can't be satisfied. */
-function attempts() {
+/** facing: 'environment' (rear, default) or 'user' (front). */
+function attempts(facing) {
   return [
-    { audio: false, video: { facingMode: { exact: 'environment' }, ...size() } },
-    { audio: false, video: { facingMode: { ideal: 'environment' }, ...size() } },
+    { audio: false, video: { facingMode: { exact: facing }, ...size() } },
+    { audio: false, video: { facingMode: { ideal: facing }, ...size() } },
     { audio: false, video: true },
   ];
 }
@@ -63,12 +64,13 @@ export function isCameraActive() {
 let lastAttempt = '';
 let lastRequest = null;
 
-async function openStream() {
-  const list = attempts();
+async function openStream(facing) {
+  const list = attempts(facing);
+  const side = facing === 'user' ? 'front' : 'rear';
   for (let i = 0; i < list.length; i++) {
     try {
       const s = await navigator.mediaDevices.getUserMedia(list[i]);
-      lastAttempt = ['rear camera required', 'rear camera preferred', 'any camera'][i];
+      lastAttempt = [side + ' camera required', side + ' camera preferred', 'any camera'][i];
       lastRequest = list[i];
       return s;
     } catch (error) {
@@ -84,14 +86,15 @@ async function openStream() {
  * Start (or reuse) the camera and attach it to videoEl.
  * Returns { ok: true, info } or { ok: false, code, message }.
  */
-export async function startCamera(videoEl) {
+/** facing: 'environment' (rear, default) or 'user' (front). To switch, stopCamera() first. */
+export async function startCamera(videoEl, facing = 'environment') {
   if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     return { ok: false, code: 'Insecure', message: 'The camera only works on a secure (https) page in a supported browser.' };
   }
   try {
     if (!isCameraActive()) {
       const gen = generation;
-      if (!pending) pending = openStream().finally(() => { pending = null; });
+      if (!pending) pending = openStream(facing).finally(() => { pending = null; });
       const s = await pending;
       if (gen !== generation) {            // stopCamera() was called while we waited
         s.getTracks().forEach((t) => t.stop());
