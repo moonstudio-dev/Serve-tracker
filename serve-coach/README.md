@@ -187,3 +187,8 @@ Camera test, same wall, phone still, on both phones:
 **Cause:** both browsers read width/height in the camera sensor's (landscape) orientation and then rotate the picture to the phone. Asking for 720×1280 therefore produced a 1280×720 strip cut out of the middle of the view. That is why the body never fitted (≈ 1.5 m of height visible).
 
 **Fix (v1.1.5):** always request 1280×720 in sensor orientation; an upright phone receives a full-view 720×1280 portrait frame that fills the preview with no cropping. Safety net: if an upright phone still receives a landscape frame, the camera is released and reopened with no size request (C). Tested on simulated devices (rotating, always-landscape, desktop) and with the alignment and lifecycle tests.
+
+### iPhone full-body test and safety-net fix (17 Nov, v1.1.6)
+- iPhone, v1.1.5, full body at distance: **17/17 keypoints ≥ 0.3 incl. both ankles (0.46–0.53), 30 fps** — full-body tracking passes on iPhone.
+- But it ran at 480×640 instead of 720×1280: the safety net checked `track.getSettings()` immediately after opening. iPhone Safari reports the sensor's 1280×720 at that moment and only rotates to 720×1280 once the picture plays, so the safety net wrongly fell back to the no-size request.
+- Fix (v1.1.6): the safety net now judges the shape of the playing picture after a 0.6 s settle. Simulated devices: iPhone-like → 720×1280, no fallback; always-landscape phone → fallback; desktop → 1280×720.

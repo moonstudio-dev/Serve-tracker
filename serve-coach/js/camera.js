@@ -61,26 +61,15 @@ export function isCameraActive() {
 }
 
 let lastAttempt = '';
+let lastRequest = null;
 
 async function openStream() {
   const list = attempts();
   for (let i = 0; i < list.length; i++) {
     try {
-      let s = await navigator.mediaDevices.getUserMedia(list[i]);
+      const s = await navigator.mediaDevices.getUserMedia(list[i]);
       lastAttempt = ['rear camera required', 'rear camera preferred', 'any camera'][i];
-      const st = s.getVideoTracks()[0].getSettings();
-      if (isMobileDevice() && isPortraitScreen() && st.width > st.height) {
-        // Upright phone but landscape frame: that is a cropped strip. Retry without a size.
-        const facing = list[i].video && list[i].video.facingMode;
-        // Release the camera first: some Android phones can't open it twice.
-        s.getTracks().forEach((t) => t.stop());
-        try {
-          s = await navigator.mediaDevices.getUserMedia({ audio: false, video: facing ? { facingMode: facing } : true });
-          lastAttempt += ', no size (portrait fallback)';
-        } catch (e) {
-          s = await navigator.mediaDevices.getUserMedia(list[i]); // reopen the original request
-        }
-      }
+      lastRequest = list[i];
       return s;
     } catch (error) {
       // Only "this camera/setting doesn't exist" moves on to the next attempt.
@@ -110,16 +99,45 @@ export async function startCamera(videoEl) {
       }
       stream = s;
     }
-    if (videoEl.srcObject !== stream) videoEl.srcObject = stream;
+    const fresh = videoEl.srcObject !== stream;
+    if (fresh) videoEl.srcObject = stream;
     videoEl.muted = true;
     videoEl.setAttribute('playsinline', '');
     await videoEl.play();
+    if (fresh) await portraitSafetyNet(videoEl);
     return { ok: true, info: getInfo(videoEl) };
   } catch (error) {
     stopCamera(videoEl);
     const code = (error && error.name) || 'Error';
     return { ok: false, code, message: MESSAGES[code] || 'The camera couldn’t start. Try again.' };
   }
+}
+
+/**
+ * Safety net: an upright phone should receive a portrait frame. If the PLAYING picture is
+ * landscape, it is a strip cropped out of the view, so reopen the camera with no size request.
+ * Judge by the video element after a short settle, not by track.getSettings() straight after
+ * opening: iPhone Safari reports the sensor's 1280x720 there and only rotates to 720x1280
+ * once playing (v1.1.5 fell back to 480x640 on iPhone because of this, 17 Nov).
+ */
+async function portraitSafetyNet(videoEl) {
+  if (!isMobileDevice() || !isPortraitScreen()) return;
+  await new Promise((r) => setTimeout(r, 600));
+  if (!(videoEl.videoWidth > videoEl.videoHeight)) return;
+  const gen = generation;
+  const facing = lastRequest && lastRequest.video && lastRequest.video.facingMode;
+  stream.getTracks().forEach((t) => t.stop()); // release first: some Android phones can't open twice
+  let s;
+  try {
+    s = await navigator.mediaDevices.getUserMedia({ audio: false, video: facing ? { facingMode: facing } : true });
+    lastAttempt += ', no size (portrait fallback)';
+  } catch (e) {
+    s = await navigator.mediaDevices.getUserMedia(lastRequest); // reopen the original request
+  }
+  if (gen !== generation) { s.getTracks().forEach((t) => t.stop()); return; } // stopped meanwhile
+  stream = s;
+  videoEl.srcObject = s;
+  await videoEl.play();
 }
 
 /** Stop all tracks and detach. Safe to call when nothing is running. */
