@@ -195,3 +195,14 @@ Camera test, same wall, phone still, on both phones:
 
 ### iPhone, v1.1.6 (17 Nov, 16:36): passed
 720×1280 portrait from the first request (no fallback), rear "Back Dual Wide Camera", WebGL, **17/17 keypoints ≥ 0.3** (ankles 0.41 / 0.69, knees 0.58 / 0.73), skeleton aligned head to ankles (screenshot). 17–25 fps at 720×1280 vs ~30 fps at 480×640: sharper picture costs some speed; fine for setup, to be reviewed for serve detection.
+
+## Stage 1: complete (17 Nov 2026, v1.1.6)
+| Criterion | Desktop Chrome | iPhone Safari (iOS 18.7) | Android Chrome 157 (Mali-G610) |
+|---|---|---|---|
+| Camera | front, passed | rear, passed | rear, passed |
+| Portrait 720×1280 full-view picture | n/a | passed | passed |
+| Full skeleton follows the body, aligned | passed | passed (17/17 keypoints, ankles 0.41/0.69) | passed (PM visual check, full skeleton) |
+| Camera stops on leaving step 4, single stream on return | passed (automated) | passed (event log) | passed (event log) |
+| Tracking speed | – | 17–25 fps (WebGL) | ~10 fps (WASM) |
+
+Carried into later stages: Android tracking speed (~10 fps) for serve detection (Stage 6); Safari asks for camera permission after every page reload unless allowed in Website Settings (setup copy, Stage 2); the debug panel stays available behind `?debug=1`.
