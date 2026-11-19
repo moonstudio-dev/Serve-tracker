@@ -40,6 +40,8 @@ export class Preview {
   }
 
   get ready() { return this.on && !!this.info && getPoseInfo().running; }
+  /** Camera picture available (tracking may or may not be running). */
+  get cameraOn() { return this.on && !!this.info && this.video.videoWidth > 0; }
   get stream() { return this.video.srcObject; }
 
   /** Start (or restart with another camera). Resolves true when the camera and tracking run. */
@@ -63,11 +65,13 @@ export class Preview {
     this.debug.note('camera on ' + res.info.videoWidth + 'x' + res.info.videoHeight + ' facing=' + res.info.facingMode + ' (' + res.info.request + ')');
     const front = res.info.facingMode === 'user' || (facing === 'user' && res.info.facingMode === 'unknown');
     if (this.els.box) this.els.box.classList.toggle('mirror', front);
+    this.trackingFailed = false;
     this.setStatus('Loading body tracking…');
     try {
       await loadMoveNet();
     } catch (e) {
       if (token !== this.token) return false;
+      this.trackingFailed = true;
       this.setStatus('Body tracking couldn’t load. Check your connection, then try again.', 'error', true);
       this.debug.note('model error ' + e.message);
       return false;

@@ -99,7 +99,12 @@ export function initRecord({ debug, openClip }) {
     if (practice.state === 'recording') { b.textContent = 'Stop and save clip'; b.disabled = false; b.classList.remove('btn-ball'); b.classList.add('btn-danger'); }
     else if (practice.state === 'starting') { b.textContent = 'Starting…'; b.disabled = true; }
     else if (practice.state === 'stopping') { b.textContent = 'Saving…'; b.disabled = true; }
-    else {
+    else if (!practice.session) {
+      // Practice ended (or none open): the next practice goes through the journey again.
+      b.textContent = 'Start a new practice';
+      b.classList.add('btn-ball'); b.classList.remove('btn-danger');
+      b.disabled = false;
+    } else {
       b.textContent = 'Start recording';
       b.classList.add('btn-ball'); b.classList.remove('btn-danger');
       b.disabled = !preview.ready || switching;
@@ -135,6 +140,7 @@ export function initRecord({ debug, openClip }) {
   }
 
   $('recBtn').addEventListener('click', () => {
+    if (practice.state === 'idle' && !practice.session) { location.hash = '#practice'; return; }
     if (practice.state === 'idle') startClip();
     else if (practice.state === 'recording') stopClip('stopped');
   });
@@ -146,6 +152,7 @@ export function initRecord({ debug, openClip }) {
     const clips = await store.getSessionClips(practice.session.id);
     await practice.endSession();
     const total = clips.reduce((n, c) => n + ((c.video && c.video.durationMs) || 0), 0);
+    updateButton();
     msg(clips.length ? `Practice ended: ${clips.length} clip${clips.length === 1 ? '' : 's'}, ${fmtTime(total)} recorded. Find it in Progress › Video recordings.` : 'Practice ended.', 'ok');
     renderClips();
   });
@@ -255,20 +262,28 @@ export function initRecord({ debug, openClip }) {
     if (!clips.length) { practice.use(s); $('recResume').hidden = true; return; } // empty: just reuse it
     $('recResumeText').textContent = `You have an unfinished practice from ${new Date(s.createdAt).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' })} with ${clips.length} clip${clips.length === 1 ? '' : 's'}.`;
     $('recResume').hidden = false;
-    $('recContinue').onclick = () => { practice.use(s); $('recResume').hidden = true; renderClips(); };
-    $('recNew').onclick = async () => { await store.endSession(s.id); await practice.newSession(); $('recResume').hidden = true; renderClips(); };
+    $('recContinue').onclick = () => { practice.use(s); $('recResume').hidden = true; if (!s.cameraSetup) { location.hash = '#camera'; return; } renderClips(); };
+    // A new practice goes through the journey (Practice → Camera setup → Readiness).
+    $('recNew').onclick = async () => { await store.endSession(s.id); $('recResume').hidden = true; location.hash = '#practice'; };
   }
 
   /* ---------- screen lifecycle ---------- */
   async function enter() {
     active = true;
     tripod = (prefs.get(KEYS.cfg) || {}).position || tripod;
+    facing = prefs.get(KEYS.camera) || facing;
     paintChoices();
     updateButton();
     await offerResume();
-    // No practice yet: plan one first (Home → Practice setup → Camera setup → Record).
-    if (!practice.session && $('recResume').hidden && !(await store.getActiveSession())) {
+    const current = await store.getActiveSession();
+    // No practice yet: plan one first (Practice → Camera setup → Readiness → Record).
+    if (!practice.session && $('recResume').hidden && !current) {
       location.hash = '#practice';
+      return;
+    }
+    // Camera setup not confirmed for this practice: confirm it first (never assumed).
+    if ($('recResume').hidden && current && !current.cameraSetup) {
+      location.hash = '#camera';
       return;
     }
     renderClips();
@@ -309,5 +324,7 @@ export function initRecord({ debug, openClip }) {
 
   function setSide(sd) { if (practice.state === 'idle') { side = sd; prefs.set(KEYS.cfg, { ...(prefs.get(KEYS.cfg) || {}), side }); paintChoices(); } }
 
-  return { enter, leave, preview, practice, setSide, setTripod };
+  function setFacing(f) { if (practice.state === 'idle' && f) { facing = f; prefs.set(KEYS.camera, facing); paintChoices(); } }
+
+  return { enter, leave, preview, practice, setSide, setTripod, setFacing };
 }

@@ -28,7 +28,7 @@ export function planText(plan) {
   return `${sides} · ${plan.targetPerSide} serve${plan.targetPerSide === 1 ? '' : 's'}${plan.sides === 'both' ? ' each' : ''}`;
 }
 
-export function initPractice({ onStart }) {
+export function initPractice({ onStart, getHand = () => null }) {
   let sides = 'both';
   let useTarget = true;
   let target = MAX_TARGET;
@@ -60,7 +60,8 @@ export function initPractice({ onStart }) {
         sides, targetPerSide: t,
         targets: { deuce: sides !== 'ad' ? t : null, ad: sides !== 'deuce' ? t : null },
       };
-      const session = await store.createSession(plan);
+      // Handedness is copied onto the session so clips keep the right value if the profile changes.
+      const session = await store.createSession(plan, { playerHand: getHand(), cameraSetup: null });
       onStart(session, planSides(plan)[0]);
     } finally { $('pStart').disabled = false; }
   });

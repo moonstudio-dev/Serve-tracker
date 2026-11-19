@@ -1,20 +1,23 @@
 # Serve Coach — MVP1 product requirements
 
-Living summary of the agreed MVP1 scope as implemented on `integration/serve-coach`. Last updated: 17 Nov 2026 (v1.4.0, tripod position).
+Living summary of the agreed MVP1 scope as implemented on `integration/serve-coach`. Last updated: 19 Nov 2026 (v1.5.0, five-step journey Phase A).
 
-## Journey
-Home → Practice setup → Camera setup (first time, or to change the spot) → Record practice clips → Save on this device → Progress › Video recordings → Replay with synchronised skeleton. Desktop Chrome, iPhone Safari, Android Chrome.
+## Journey (five steps, approved 19 Nov 2026)
+1 Start (Home) → 2 Practice → 3 Camera setup → 4 Readiness → 5 Record. Progress › Video recordings and Replay are destinations afterwards, not steps. A step bar shows done / current / upcoming. Desktop Chrome, iPhone Safari, Android Chrome.
+- Handedness: asked once at first practice (not a numbered step), saved locally, editable from Home, copied onto each session (`playerHand`). Never mirrors movement data.
+- Camera setup every practice: previous tripod position and phone camera are shown as a suggestion; the player must confirm ("Yes, same setup") or change them. Stored on the session (`cameraSetup`).
+- Readiness: hybrid. Only camera access / camera picture / storage safeguards block recording. Tracking unavailable, poor framing or unreliable tracking allow recording with a warning; clips are labelled Complete tracking / Partial tracking / Tracking unavailable (Phase B). Readiness runs automatically; the arm check is "either arm above the head", prompted by a practice serve motion, and is a warning only (Phase B).
 
 ## Three separate settings (never combined)
 | Setting | Values | Where it is chosen | Saved |
 |---|---|---|---|
 | Serving side | Both / Deuce / Ad (plan); Deuce or Ad per clip | Practice setup; switchable on Record between clips | session `plan.sides`; clip `side` |
-| Tripod position (physical place on court) | Behind / Side | Camera setup step 1 (with illustrations); editable on Record between clips | clip `tripodPosition` |
-| Phone camera | Rear / Front | Record screen | clip `camera.facing`, `camera.label` |
+| Tripod position (physical place on court) | Behind / Side | Camera setup (step 3, with illustrations; previous value must be confirmed); editable on Record between clips | session `cameraSetup`; clip `tripodPosition` |
+| Phone camera | Rear / Front | Camera setup (step 3); editable on Record between clips | session `cameraSetup`; clip `camera.facing`, `camera.label` |
 
 - **Behind:** tripod behind the player near the baseline, camera facing the net.
 - **Side:** tripod beside the player, side-on view.
-- Tripod position has no default. Recording is refused until it is chosen, so no clip carries a guessed position. Changing it on Record applies to the next clip and is confirmed on screen; it is locked while a clip records.
+- Tripod position is never assumed: each practice the player confirms last time's value or chooses again. Changing it on Record applies to the next clip and is confirmed on screen; it is locked while a clip records.
 - Clips recorded before v1.4.0 are marked `tripodPosition: 'unknown'` (shown as *Unknown*), never guessed.
 
 ## Practice setup

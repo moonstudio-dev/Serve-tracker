@@ -19,7 +19,8 @@
 
 export const KEYS = {
   cfg: 'sc-cfg',       // { hand: 'R'|'L', side: 'deuce'|'ad' }
-  spot: 'sc-spot',     // { hand, side, saved: timestamp }
+  spot: 'sc-spot',     // legacy (v1.4 camera wizard); no longer used
+  profile: 'sc-profile', // { hand: 'R'|'L', handSetAt }
   notes: 'sc-notes',   // string[]
   camera: 'sc-camera', // 'environment' | 'user'
 };
@@ -99,8 +100,8 @@ const nowIso = () => new Date().toISOString();
 const tz = () => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch (e) { return ''; } };
 
 /* ------------------------------------------------------------------ sessions */
-export async function createSession(plan = null) {
-  const s = { ...BASE(), id: uuid(), createdAt: nowIso(), timeZone: tz(), endedAt: null, status: 'active', plan, clipCount: 0 };
+export async function createSession(plan = null, extra = {}) {
+  const s = { ...BASE(), id: uuid(), createdAt: nowIso(), timeZone: tz(), endedAt: null, status: 'active', plan, clipCount: 0, ...extra };
   await tx('sessions', 'readwrite', (t) => t.objectStore('sessions').put(s));
   return s;
 }

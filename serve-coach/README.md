@@ -291,3 +291,17 @@ Stress tests (headless Chrome, synthetic camera; `work/stress.py`), results:
 | 10-minute clip | saved (600 s, 36 000 movement frames), replay aligned, skeleton present at 2 %, 50 % and 97 % |
 
 Also: the iPhone storage tip no longer states a fixed one-week expiry; see `KNOWN-LIMITATIONS.md` for confirmed vs documented vs potential storage behaviour. Player UAT script: `UAT.md`.
+
+## Five-step journey — Phase A (v1.5.0)
+
+Plan and decisions: project doc *serve-coach-five-step-journey-plan.md* (section 11 and the approval of 19 Nov).
+
+**Journey:** Start (`#home`) → Practice (`#practice`) → Camera setup (`#camera`) → Readiness (`#ready`) → Record (`#record`). A five-segment step bar (done / current / upcoming) is on Practice, Camera setup, Readiness and Record; Home lists the five steps. Progress and Replay are destinations, not steps. `#setup` (old wizard) redirects to `#camera`.
+
+- **Handedness (`#hand`)**: asked once, the first time a practice is started (not a numbered step); saved in `sc-profile` {hand, handSetAt}; editable from Home; copied onto each new session as `playerHand`. Used only for the placement guide; never changes movement data.
+- **Practice:** unchanged (sides, optional target ≤ 10, reminders only).
+- **Camera setup:** tripod position (Behind / Side, with illustrations) and phone camera (Rear / Front) on one screen, plus a collapsible *Where to put the tripod* guide. If a previous setup exists, it's offered as "Last time you used … Is your tripod set up the same way today?" with **Yes, same setup** / **Change**. Nothing is used until the player confirms. Saved on the session as `cameraSetup` {tripodPosition, facing, how: 'chosen' | 'same as last time', confirmedAt}.
+- **Readiness (Phase A version):** live preview with skeleton, setup summary, a large status line (camera / tracking / body seen), hip-height guide. Only a missing camera picture blocks *Continue to record* (hybrid rule). Automatic framing checks come in Phase B.
+- **Record:** step bar; redirects to Practice if no practice is open and to Camera setup if this practice's camera setup isn't confirmed. After *End practice*, the main button becomes *Start a new practice* (goes through the journey). Side, tripod position and phone camera can still change between clips; each clip saves the actual values.
+- **Removed:** the old five-step camera wizard, its scripted demo checks, the level-bubble demo, the saved-spot summary and the *Set up camera / Spot saved* header pill.
+- **Offline feasibility page:** `spike/offline.html` (no camera) loads the tracking model and runs it on a test image, logging results online and offline for phone testing.
