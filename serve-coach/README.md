@@ -275,3 +275,19 @@ Product requirements: see `REQUIREMENTS.md`.
 - Setup copy no longer claims what can be measured from an angle.
 
 **Tested (headless Chrome):** step 1 choice and illustrations, step 2 Behind and Side variants, summary, Record pre-selects the setup position, recording refused without a position, position locked while recording, change between clips saved on the next clip, old clips migrated to Unknown, library and replay labels, synced replay unaffected. Stage A, B and C tests pass.
+
+## Reliability pass (v1.4.1)
+
+Stress tests (headless Chrome, synthetic camera; `work/stress.py`), results:
+| Scenario | Result |
+|---|---|
+| 20 clips in one practice, side and phone camera switched before every clip | 20/20 saved with movement data; Progress renders 20 rows in < 0.4 s; last clip replays aligned |
+| 10 rapid phone-camera taps | settles on the last choice, one camera stream, records normally |
+| Camera taken mid-clip (track ended, e.g. a call) | **was:** recording never stopped. **Fixed:** clip saved as interrupted ("camera stopped"), message shown, camera restarts |
+| Browser never reports recorder stop | **was:** stuck on "Saving…" forever. **Fixed:** 4 s fallback, clip saved |
+| Recorder never starts | **was:** stuck on "Starting…". **Fixed:** 6 s timeout, error message |
+| Storage full mid-clip (QuotaExceededError) | clip stopped and saved, message shown |
+| Final clip details can't be written | **was:** session stuck in "stopping". **Fixed:** always returns to ready; clip recovered as interrupted on next launch |
+| 10-minute clip | saved (600 s, 36 000 movement frames), replay aligned, skeleton present at 2 %, 50 % and 97 % |
+
+Also: the iPhone storage tip no longer states a fixed one-week expiry; see `KNOWN-LIMITATIONS.md` for confirmed vs documented vs potential storage behaviour. Player UAT script: `UAT.md`.

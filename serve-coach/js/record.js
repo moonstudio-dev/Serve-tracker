@@ -151,6 +151,7 @@ export function initRecord({ debug, openClip }) {
   });
 
   /* ---------- practice events ---------- */
+  let endedBy = null;
   practice.on((type, detail) => {
     if (type === 'clip-start') {
       $('recBadge').hidden = false;
@@ -159,6 +160,15 @@ export function initRecord({ debug, openClip }) {
     }
     if (type === 'clip-stopping' || type === 'clip-saved') {
       clearInterval(timer); $('recBadge').hidden = true; $('recBadge').textContent = 'REC 0:00';
+    }
+    if (type === 'interrupted') endedBy = detail;
+    if (type === 'clip-saved' && endedBy) {
+      msg(endedBy === 'camera stopped'
+        ? 'Recording stopped because the camera was taken by something else (for example a call). The clip was saved.'
+        : 'Recording stopped unexpectedly. The clip was saved.', 'error');
+      endedBy = null;
+      // Get the camera back for the next clip (only while Record is on screen and visible).
+      if (active && document.visibilityState === 'visible') preview.start(facing).then(updateButton);
     }
     if (type === 'clip-saved' || type === 'session') renderClips();
     if (type === 'storage-full') msg('Storage is almost full, so the clip was stopped and saved.', 'error');

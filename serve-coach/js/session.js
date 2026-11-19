@@ -92,6 +92,7 @@ export class PracticeSession {
       this.rec = new ClipRecorder(stream, {
         onChunk: (blob, seq) => this.saveChunk(blob, seq),
         onError: (err) => { this.emit('error', err); this.stopClip('recording error: ' + (err && err.name)); },
+        onEnded: (why) => { if (this.state === 'recording') { this.emit('interrupted', why); this.stopClip(why, true); } },
       });
       await this.rec.start();
       await store.updateClip(clip.id, { video: { ...clip.video, mime: this.rec.mime } });
@@ -158,11 +159,12 @@ export class PracticeSession {
       const c = this.clip;
       const rec = this.rec;
       const stopPerf = performance.now();
+      let saved = null;
+      try {
       try { await rec.stop(); } catch (e) { /* keep what we have */ }
       this.flushPoses();
       await Promise.all(c.chunkWrites);
       const durationMs = rec.startPerf ? Math.round(stopPerf - rec.startPerf) : 0;
-      let saved = null;
       if (!rec.seq) {
         await store.deleteClip(c); // nothing was recorded
       } else {
@@ -174,10 +176,16 @@ export class PracticeSession {
           poses: { ...c.poses, frames: c.poseFrames, fps: durationMs ? +(c.poseFrames * 1000 / durationMs).toFixed(1) : null },
           writeErrors: c.writeErrors,
         };
-        await store.updateClip(c.id, changes);
         saved = { ...c, ...changes };
+        await store.updateClip(c.id, changes);
       }
-      this.clip = null; this.rec = null; this.state = 'idle'; this._stopping = null;
+      } catch (e) {
+        // Couldn't write the final details (e.g. storage full). The video and movement already
+        // saved stay; the clip is recovered as interrupted on next launch. Never stay stuck.
+        this.emit('error', e);
+      } finally {
+        this.clip = null; this.rec = null; this.state = 'idle'; this._stopping = null;
+      }
       this.emit('clip-saved', saved);
       return saved;
     })();
